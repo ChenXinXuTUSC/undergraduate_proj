@@ -1,6 +1,9 @@
 import os
+import heapq
 import numpy as np
+import pandas as pd
 from plyfile import PlyData, PlyElement
+import open3d as o3d
 from tqdm import tqdm
 
 from . import colorlog
@@ -27,6 +30,32 @@ def npz2ply(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
     # print("maximum corrd:", np.max(all_pos, axis=0))
 
     return np.concatenate([all_pos, all_rgb], axis=1)
+
+def npy2o3d(points:np.ndarray):
+    if len(points.shape) > 2:
+        raise Exception("npy2o3d could only handle data shape of [num_points, num_features]")
+    
+    points_o3d = o3d.geometry.PointCloud()
+    if points.shape[1] >= 3:
+        # for xyz coordinates
+        points_o3d.points = o3d.utility.Vector3dVector(points[:, 0:3])
+    if points.shape[1] >= 6:
+        # for rgb colors
+        points_o3d.colors = o3d.utility.Vector3dVector(points[:, 3:6])
+    if points.shape[1]>= 9:
+        # for uvw normals
+        points_o3d.normals = o3d.utility.Vector3dVector(points[:, 6:9])
+    
+    return points_o3d
+
+def o3d2npy(points_o3d:o3d.geometry.PointCloud):
+    if len(points_o3d.points) > 0:
+        xyz = np.asarray(points_o3d.points)
+    if len(points_o3d.colors) > 0:
+        rgb = np.asarray(points_o3d.colors)
+    if len(points_o3d.normals) > 0:
+        uvw = np.asarray(points_o3d.normals)
+    return np.concatenate([xyz, rgb, uvw], axis=1)
 
 def transform_augment(points: np.ndarray, angle: float, dist: float):
     ''' 
@@ -79,35 +108,44 @@ def voxel_down_sample(points: np.ndarray, voxel_size: float):
     log_info(f"original num: {len(points)}, after voxel down sample: {len(filtered_points)}")
     return filtered_points
 
-def fuse2frags(points1, points2, out_name:str):
-    ply_line_type = np.dtype([("x", "f4"), ("y", "f4"), ("z", "f4"), ("red", "u1"), ("green", "u1"), ("blue", "u1")])
+def fuse2frags(points1, points2, ply_line_type:np.dtype, out_dir:str=".", out_name:str="out.ply"):
+    # ply_line_type = np.dtype([("x", "f4"), ("y", "f4"), ("z", "f4"), ("red", "u1"), ("green", "u1"), ("blue", "u1")])
     points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_line_type)
     points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_line_type)
     points = np.concatenate([points1_plyformat, points2_plyformat], axis=0)
-    PlyData([PlyElement.describe(points, "vertex", comments="vertices with rgb")]).write("./augtsample/" + out_name + ".ply")
+    PlyData([PlyElement.describe(points, "vertex", comments="vertices")]).write(os.path.join(out_dir, out_name))
 
-def iss_detect(points, search_tree, radius):
+def solve_procrustes(P,Q):
     '''
-    Detect point cloud key points using Intrinsic Shape Signature(ISS)
-
     params
-    ----------
-    point_cloud: numpy.ndarray
-        input point cloud
-    search_tree: Open3D.geometry.KDTree
-        point cloud search tree
-    radius: float
-        radius for ISS computing
+    -
+    * P: [num_points, xyz] points array
+    * Q: [num_points, xyz] points array
 
     return
-    ----------
-    point_cloud: numpy.ndarray
-        Velodyne measurements as N-by-3 numpy ndarray
+    -
+    * T: estimated transformation SE(3)
     '''
-    # please figure out the difference between k nearest neighbour
-    # search and radius search. In this ISS key  points  detection
-    # implementation, we use radius search provided by open3d.
+    # 泛化普鲁克分析默认需要分析的T只是一个旋转矩阵
+    # 所以我们先把点集P和Q中心化，这样就不用求平移
+    # 项t了。而且t在最小二乘法中求导很容易得出就是
+    # P - QR，因此我们先求出R就可以得到t
 
+    # 关于R为什么是使用SVD分解可以求，具体请参考这本书
+    # Generalized Procrustes analysis and its applications in photogrammetry - Akca, Devrim
+    # 利用了P*Q是一个对称矩阵的特性，推导出了很多重要的等式，最后发现就是SVD分解的两个特征向量矩阵的乘积
     
+    # we use 'u' to represent greek 'Mu'
+    # and 's' to represent greek 'sigma'
+    Pu = P.mean(axis=0)
+    Qu = Q.mean(axis=0)
 
+    U, S, V = np.linalg.svd(np.dot(Qu.T, Pu), full_matrices=True, compute_uv=True)
+    R = np.dot(U, V)
+    t = Qu - np.dot(Pu, R)
 
+    T = np.zeros((4, 4))
+    T[0:3, :3] = R
+    T[0:3, 3:] = t
+    T[3, 3] = 1.0
+    return T

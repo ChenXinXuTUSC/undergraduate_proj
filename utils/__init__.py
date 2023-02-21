@@ -10,3 +10,6 @@ from .colorstr import *
 
 from . import tools
 from .tools import *
+
+from . import iss
+from .iss import *
