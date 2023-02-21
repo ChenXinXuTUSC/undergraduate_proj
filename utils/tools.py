@@ -83,6 +83,11 @@ def transform_augment(points: np.ndarray, angle: float, dist: float):
     )
     transd = np.array([np.random.uniform(), np.random.uniform(), np.random.uniform()]) * dist
     points[:, :3] = np.dot(points[:, :3], rotmat)[:, :3] + transd
+    # 如果该点云已经计算了法向量，那么法向量也要进行变换
+    if points.shape[1] >= 9:
+        # 该函数只能假设点云的特征排列是(x,y,z,r,g,b,u,v,w)
+        # 即最后三个位置存放法向量方向
+        points[:, 6:9] = np.dot(points[:, 6:9], rotmat)[:, :3]
     return points, rotmat, transd
 
 def voxel_down_sample(points: np.ndarray, voxel_size: float):

@@ -34,7 +34,9 @@ def radius_outlier_filter(points:np.ndarray, radius:float, must_neighbors:int):
 def iss_detect(points, radius=0.25):
     '''
     Detect point cloud key points using Intrinsic Shape Signature(ISS)\n
-    ISS角点检测原论文要求使用RNN进行球形领域搜索，所以就不提供KNN的选项了
+    ISS角点检测原论文要求使用RNN进行球形领域搜索，所以就不提供KNN的选项了\n
+    不要使用open3d的PointCloud对象来做搜索，角点检测的似乎不是非常正确，比\n
+    如很多平面上本来不应该有角点，但仍然均匀分布了角点
 
     params
     ----------
@@ -78,6 +80,7 @@ def iss_detect(points, radius=0.25):
             continue # heuristic to filter outlier
         weights = []
         distans = []
+        # 因为用的是RNN搜索，所以要去除第一个自身索引
         for neighbor_idx in neighbor_indicies[1:]:
             # check if in the cache
             if not neighbor_idx in num_neighbors_cache:
@@ -113,8 +116,8 @@ def iss_detect(points, radius=0.25):
     while little_heap:
         _, top_idx = heapq.heappop(little_heap)
         if not top_idx in suppressed_points_indicies:
-            _, top_neighbors_indices, _ = search_tree.search_radius_vector_3d(points[top_idx, :3], radius)
-            for idx in top_neighbors_indices:
+            _, top_neighbors_indices, _ = search_tree.search_radius_vector_3d(points[top_idx, :3], radius * 2.0)
+            for idx in top_neighbors_indices[1:]:
                 suppressed_points_indicies.add(idx)
     
     # 格式化为data frame好进行整体关联操作
@@ -136,8 +139,8 @@ def iss_detect(points, radius=0.25):
     # 而直线也不是一个好的特征。
 
     keypoints = keypoints.loc[
-        (keypoints["eigval_1"] > keypoints["eigval_2"]) &
-        (keypoints["eigval_2"] > keypoints["eigval_3"]),
+        (keypoints["eigval_1"] > keypoints["eigval_2"]+1.5e-4) &
+        (keypoints["eigval_2"] > keypoints["eigval_3"]+1.5e-4),
         keypoints.columns
     ]
 

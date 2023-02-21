@@ -6,6 +6,7 @@ from scipy.spatial.distance import pdist
 
 from . import tools
 from .tools import *
+from . import icp
 
 def init_matches(srcfeatpts:np.ndarray, dstfeatpts:np.ndarray):
     '''
@@ -90,9 +91,29 @@ def ransac_match(
             if T is not None:
                 log_info(f"find initial transformation:{T}")
                 break
-    
+    initial_T = T
     # baseline
-    
-    for i in range(ransac_params.max_iteration):
+    best_res = icp.ICP_exact_match(
+        srcpts, dstpts, dst_search_tree,
+        initial_T,
+        ransac_params.max_corresponding_dist, ransac_params.max_refine_num
+    )
+    num_validation = 0
+    for _ in range(ransac_params.max_iter_num):
         T = validator(next(proposal_generator))
+        if T is not None and num_validation < ransac_params.max_validation_num:
+            # check validity
+            curr_res = icp.ICP_exact_match(
+                srcpts, dstpts, dst_search_tree,
+                T,
+                ransac_params.max_corresponding_dist, ransac_params.max_refine_num
+            )
+            num_validation += 1
+        
+        if curr_res.fitness < best_res.fitness:
+            best_res = curr_res
+        
+        if num_validation == ransac_params.max_validation_num:
+            break
 
+    return best_res

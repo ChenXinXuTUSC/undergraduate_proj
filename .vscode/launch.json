@@ -12,7 +12,8 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--3dmatch_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF"
+                "--3dmatch_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--ICP_radius", "0.05"
             ]
         }
     ]
