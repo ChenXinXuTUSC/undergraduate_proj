@@ -15,6 +15,25 @@ import utils
 #   step5.3: repeat step5.2 until error converge
 # step6: refine estimation for ICP
 
+#RANSAC configuration:
+RANSACCONF = collections.namedtuple(
+    "RANSACCONF",
+    [
+        "max_workers",
+        "num_samples",
+        "max_correspondence_dist", 'max_iter_num', 'max_valid_num', 'max_refine_num'
+    ]
+)
+# fast pruning algorithm configuration:
+CHECKRCONF = collections.namedtuple(
+    "CHECKRCONF",
+    [
+        "max_correspondence_dist",
+        "max_mnn_dist_ratio", 
+        "normal_angle_threshold"
+    ]
+)
+
 if __name__ == "__main__":
     args = vars(config.args)
     npzs = [os.path.join(args["3dmatch_root"], "npz", file) for file in sorted(os.listdir(os.path.join(args["3dmatch_root"], "npz")))]
@@ -49,15 +68,34 @@ if __name__ == "__main__":
             keyfpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
                 points1_o3d.select_by_index(keypoints1["id"].values),
                 o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=100)
-            )
+            ).data
             keyfpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
                 points2_o3d.select_by_index(keypoints2["id"].values),
                 o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=100)
-            )
+            ).data
 
             regis_res = utils.ransac_match(
-                points1, points2
+                utils.o3d2npy(points1_o3d), utils.o3d2npy(points2_o3d),
+                keyfpfhs1, keyfpfhs2,
+                ransac_params=RANSACCONF(
+                    max_workers=4, num_samples=4,
+                    max_correspondence_dist=0.20,
+                    max_iter_num=100, max_valid_num=50, max_refine_num=100
+                ),
+                checkr_params=CHECKRCONF(
+                    max_correspondence_dist=0.20,
+                    max_mnn_dist_ratio=0.8,
+                    normal_angle_threshold=None
+                )
             )
+
+            rotmat_pred = regis_res.transform[:3, :3]
+            transd_pred = regis_res.transform[:3, 3]
+            R_err = ((rotmat_pred-rotmat)*(rotmat_pred-rotmat)).sum()
+            t_err = ((transd_pred-transd)*(transd_pred-transd)).sum()
+            utils.log_info(f"R err: {R_err:.3f}, t err: {t_err:.3f}")
+            input("press any key to continue...")
+
             points1[keypoints1["id"].values, 3:] = np.array([0, 255, 255])
             points2[keypoints2["id"].values, 3:] = np.array([0, 255, 255])
 

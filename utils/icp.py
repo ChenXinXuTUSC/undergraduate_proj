@@ -20,8 +20,12 @@ def ICP_exact_match(
     srcpts = srcpts[:, :3]
     dstpts = dstpts[:, :3]
 
+    # the class <evaluate_registration> has property <correspondence set>
+    # that is an nx2 numpy int-type ndarray, it stores the corresponding
+    # index of src and dst feature. It also has a <transform> proerty, it
+    # is a 4x4 numpy float ndarray that stores the SE(3)
     prev_res = o3d.pipelines.registration.evaluate_registration(
-        srcpts, dstpts, max_corresponding_dist, T
+        npy2o3d(srcpts), npy2o3d(dstpts), max_corresponding_dist, T
     )
     curr_res = prev_res
 
@@ -29,7 +33,7 @@ def ICP_exact_match(
     # 完成一次即可，作为参数传进来吧，虽然函数的参数列表就没有那么整齐
     # dst_search_tree = o3d.geometry.KDTreeFlann(npy2o3d(dstpts))
     for _ in range(max_iter_num):
-        pts_transed = np.dot(srcpts, T)
+        pts_transed = np.dot(srcpts, T[:3, :3]) + T[:3, 3]
         matches = []
         for query_idx, query_pt in enumerate(pts_transed):
             # no need to check if result is None
@@ -42,8 +46,10 @@ def ICP_exact_match(
 
         # ICP
         if len(matches) >= 4:
-            T = solve_procrustes(pts_transed, dstpts)
-            curr_res = o3d.pipelines.evaluate_registration(srcpts, dstpts, max_corresponding_dist, T)
+            P = pts_transed[matches[:, 0]]
+            Q = dstpts[matches[:, 1]]
+            T = solve_procrustes(P, Q)
+            curr_res = o3d.pipelines.registration.evaluate_registration(npy2o3d(srcpts), npy2o3d(dstpts), max_corresponding_dist, T)
             if early_terminate(curr_res, prev_res):
                 log_info("early stopping the RANSAC ICP procedure")
                 break

@@ -31,7 +31,7 @@ def radius_outlier_filter(points:np.ndarray, radius:float, must_neighbors:int):
             pts_idx_after.append(i)
     return points[pts_idx_after]
 
-def iss_detect(points, radius=0.25):
+def iss_detect(points: np.ndarray, radius=0.25):
     '''
     Detect point cloud key points using Intrinsic Shape Signature(ISS)\n
     ISS角点检测原论文要求使用RNN进行球形领域搜索，所以就不提供KNN的选项了\n

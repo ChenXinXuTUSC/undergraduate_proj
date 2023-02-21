@@ -142,15 +142,22 @@ def solve_procrustes(P,Q):
     
     # we use 'u' to represent greek 'Mu'
     # and 's' to represent greek 'sigma'
-    Pu = P.mean(axis=0)
-    Qu = Q.mean(axis=0)
+
+    # 保险起见，万一输入进来的点除了xyz坐标外还有其他的特征
+    # 只使用xyz坐标进行普鲁克分析，以及闭式解的计算
+    P = P[:, :3]
+    Q = Q[:, :3]
+    P_center = P.mean(axis=0)
+    Q_center = Q.mean(axis=0)
+    Pu = P - P_center
+    Qu = Q - Q_center
 
     U, S, V = np.linalg.svd(np.dot(Qu.T, Pu), full_matrices=True, compute_uv=True)
     R = np.dot(U, V)
-    t = Qu - np.dot(Pu, R)
+    t = Q_center - np.dot(R, P_center)
 
     T = np.zeros((4, 4))
     T[0:3, :3] = R
-    T[0:3, 3:] = t
+    T[0:3, 3] = t
     T[3, 3] = 1.0
     return T
