@@ -10,6 +10,11 @@ from . import colorlog
 from .colorlog import *
 
 def npz2ply(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
+    '''
+    这个函数是针对3DMatch-FCGF的npz数据文件读取设计的，并不通用，对于
+    其他npz存储文件，并不能提前知道里面存储了哪些属性，但是针对当前的
+    数据集，是已知xyz坐标与rgb颜色属性的。
+    '''
     if not os.path.exists(npz_path):
         raise Exception("npz file not exists, please check the path")
     if overwrite_rgb:
@@ -57,6 +62,26 @@ def o3d2npy(points_o3d:o3d.geometry.PointCloud):
     if len(points_o3d.normals) > 0:
         attr.append(np.asarray(points_o3d.normals))
     return np.concatenate(attr, axis=1)
+
+def ply2npy(ply_path:str):
+    try:
+        plydata = PlyData.read(ply_path)
+        element_names = [e.name for e in plydata.elements]
+        if "vertex" not in element_names:
+            raise Exception("no verticies data found, vertex data should be an element named \"vertex\"")
+        # we only extract verticies data
+        points = np.asarray(plydata["vertex"].data)
+        if len(points) == 0:
+            raise Exception("empty vertex data")
+        
+        npy_points = []
+        for line in points:
+            npy_points.append(list(line))
+        npy_points = np.asarray(npy_points)
+    except Exception as e:
+        log_erro(str(e))
+        return None
+    return npy_points
 
 def transform_augment(points: np.ndarray, angle: float, dist: float):
     ''' 

@@ -4,9 +4,18 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import numpy as np
 from plyfile import PlyData, PlyElement
 
+from tqdm import tqdm
+
 import utils
 
 class PairDataset:
+    '''
+    <PairDataset> is a base class, not for data itering.
+    Class  derived  from  <PairDataset>   will    handle
+    different input source, and return two point  clouds
+    when itered by invoker(possibly  return  with  other 
+    info)
+    '''
     def __init__(
             self,
             root:str,
@@ -15,7 +24,7 @@ class PairDataset:
             augdgre: float,
             augdist: float
         ) -> None:
-        self.root = root
+        self.root = os.path.abspath(root)
         self.shuffle = shuffle
         self.augment = augment
         self.augdgre = augdgre
@@ -33,7 +42,7 @@ class ModelNet40Dense(PairDataset):
         super().__init__(root, shuffle, augment, augdgre, augdist)
         self.files = []
         mdirs = sorted([d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))])
-        for mdir in mdirs:
+        for mdir in tqdm(mdirs, total=len(mdirs), ncols=100, desc=self.__class__.__name__):
             plys = sorted([ply for ply in os.listdir(os.path.join(root, mdir)) if ply.endswith(".ply")])
             for ply in plys:
                 self.files.append((mdir, ply[:-4], os.path.abspath(os.path.join(root, mdir, ply))))
@@ -52,21 +61,10 @@ class ModelNet40Dense(PairDataset):
         #     lines = list(map(lambda li: [float(x) for x in li], [line.rstrip().split(',') for line in lines])) 
         # points = np.asarray(lines)
 
-        points = np.asarray(PlyData.read(sample_path)["vertex"].data)
-        # add dummy rgb attributes
-        points = np.hstack(
-            (
-                points['x'].reshape((-1,1)),
-                points['y'].reshape((-1,1)),
-                points['z'].reshape((-1,1)),
-                np.zeros((len(points), 1)),
-                np.zeros((len(points), 1)),
-                np.zeros((len(points), 1)),
-                points["nx"].reshape((-1,1)),
-                points["ny"].reshape((-1,1)),
-                points["nz"].reshape((-1,1)),
-            )
-        )
+        points = utils.ply2npy(sample_path)
+        # add dummy rgb attributes, as point clouds
+        # in ModelNet40 dataset don't have colors.
+        points = np.concatenate((points[:,0:3], np.zeros((len(points), 3)), points[:,3:6]), axis=1)
 
         points_aug = points.copy()
         rotmat = np.identity(3)
@@ -88,5 +86,50 @@ class ModelNet40Dense(PairDataset):
     def __iter__(self):
         return self
 
+class ThreeDMatchFCGF(PairDataset):
+    def __init__(
+            self, 
+            root: str, 
+            shuffle: bool, 
+            augment: bool, 
+            augdgre: float, 
+            augdist: float
+        ) -> None:
+        super().__init__(root, shuffle, augment, augdgre, augdist)
+        self.files = []
+        # npzs = [os.path.join(root, "npz", file) for file in sorted(os.listdir(os.path.join(root, "npz")))]
+        txts = [os.path.join(self.root, "txt", file) for file in sorted(os.listdir(os.path.join(self.root, "txt")))]
+        for txt in tqdm(txts, total=len(txts), ncols=100, desc=self.__class__.__name__):
+            with open(os.path.join(self.root, "txt", txt), 'r') as f:
+                lines = f.readlines()
+                lines = [line.rstrip().split(' ') for line in lines]
+                for line in lines:
+                    self.files.append(
+                        (
+                            line[0].split('.')[0]+'@'+line[1].split('.')[0].split('@')[1]+'@'+line[2],
+                            os.path.join(self.root, "npz", line[0]),
+                            os.path.join(self.root, "npz", line[1])
+                        )
+                    )
+        
+        if shuffle:
+            self.files = self.files[np.random.choice(range(len(self.files)), replace=False)]
+    
+    def __len__(self):
+        return len(self.files)
+    
+    def __getitem__(self, idx):
+        sample_name, frag1_path, frag2_path = self.files[idx]
+        frag1 = utils.npz2ply(frag1_path)
+        frag2 = utils.npz2ply(frag2_path)
 
+        if self.augment:
+            frag2, rotmat, transd = utils.transform_augment(frag2, self.augdgre, self.augdist)
+        
+        T = np.zeros((4, 4))
+        T[:3,:3] = rotmat
+        T[:3 ,3] = transd
+        T[3,3] = 1.0
+
+        return frag1, frag2, T, sample_name
 

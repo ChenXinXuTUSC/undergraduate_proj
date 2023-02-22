@@ -130,5 +130,3 @@ if __name__ == '__main__':
     #     os.path.join(input_dir, 'reg_result_yaogefad.txt'),
     #     df_output
     # )
-
-
