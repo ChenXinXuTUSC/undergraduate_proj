@@ -3,7 +3,7 @@ import sys
 from . import colorstr
 
 def print_loc():
-    print("    ", sys._getframe(2).f_code.co_filename + ':' + str(sys._getframe().f_back.f_lineno))
+    print("    ", sys._getframe(2).f_code.co_filename + ':' + str(sys._getframe(1).f_back.f_lineno))
 
 def log_dbug(msg:str):
     print(colorstr.get_colorstr(colorstr.FORE_WHE, colorstr.BACK_BLE, "[DBUG]"), msg)

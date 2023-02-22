@@ -8,11 +8,11 @@
             "name": "Python: 当前文件",
             "type": "python",
             "request": "launch",
-            "program": "./ICP_registration.py",
+            "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--3dmatch_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--data_root", "/home/hm/fuguiduo/datasets/ModelNet40_dense",
                 "--ICP_radius", "0.05"
             ]
         }

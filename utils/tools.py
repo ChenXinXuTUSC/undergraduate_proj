@@ -49,13 +49,14 @@ def npy2o3d(points:np.ndarray):
     return points_o3d
 
 def o3d2npy(points_o3d:o3d.geometry.PointCloud):
+    attr = []
     if len(points_o3d.points) > 0:
-        xyz = np.asarray(points_o3d.points)
+        attr.append(np.asarray(points_o3d.points)) 
     if len(points_o3d.colors) > 0:
-        rgb = np.asarray(points_o3d.colors)
+        attr.append(np.asarray(points_o3d.colors))
     if len(points_o3d.normals) > 0:
-        uvw = np.asarray(points_o3d.normals)
-    return np.concatenate([xyz, rgb, uvw], axis=1)
+        attr.append(np.asarray(points_o3d.normals))
+    return np.concatenate(attr, axis=1)
 
 def transform_augment(points: np.ndarray, angle: float, dist: float):
     ''' 
@@ -87,7 +88,7 @@ def transform_augment(points: np.ndarray, angle: float, dist: float):
     if points.shape[1] >= 9:
         # 该函数只能假设点云的特征排列是(x,y,z,r,g,b,u,v,w)
         # 即最后三个位置存放法向量方向
-        points[:, 6:9] = np.dot(points[:, 6:9], rotmat)[:, :3]
+        points[:, 6:9] = np.dot(points[:, 6:9], rotmat)
     return points, rotmat, transd
 
 def voxel_down_sample(points: np.ndarray, voxel_size: float):
@@ -113,7 +114,7 @@ def voxel_down_sample(points: np.ndarray, voxel_size: float):
     log_info(f"original num: {len(points)}, after voxel down sample: {len(filtered_points)}")
     return filtered_points
 
-def fuse2frags(points1, points2, ply_line_type:np.dtype, out_dir:str=".", out_name:str="out.ply"):
+def fuse2frags(points1:np.ndarray, points2:np.ndarray, ply_line_type:np.dtype, out_dir:str=".", out_name:str="out.ply"):
     # ply_line_type = np.dtype([("x", "f4"), ("y", "f4"), ("z", "f4"), ("red", "u1"), ("green", "u1"), ("blue", "u1")])
     points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_line_type)
     points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_line_type)
@@ -161,3 +162,30 @@ def solve_procrustes(P,Q):
     T[0:3, 3] = t
     T[3, 3] = 1.0
     return T
+
+def apply_transformation(srcpts: np.ndarray, T: np.ndarray):
+    if T.shape != (4, 4):
+        log_warn("invalid transformation matrix")
+        return srcpts
+    R = T[:3, :3]
+    t = T[:3, 3]
+    if np.fabs(np.linalg.det(R) - 1.0) > 1e-3:
+        log_warn("invalid rotation matrix, not orthogonal")
+        return srcpts
+    
+    srcpts[:, :3] = np.dot(srcpts[:, :3], R) + t
+    return srcpts
+
+def resolve_axis_angle(R: np.ndarray):
+    '''
+    this function is referencing:\n
+    https://blog.csdn.net/Sandy_WYM_/article/details/84309000
+    '''
+    if R.shape != (3,3):
+        log_warn("invalid rotation matrix")
+        return None, None
+    
+    angle = np.arccos((R.trace() - 1.0)/2.0)
+    raxis = np.array([R[2,1]-R[1,2], R[0,2]-R[2,0], R[1,0]-R[0,1]]) / (2.0 * np.sin(angle))
+    raxis = raxis / np.sqrt((raxis * raxis).sum()) # normalization
+    return raxis, angle
