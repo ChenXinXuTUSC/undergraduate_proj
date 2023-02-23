@@ -86,7 +86,7 @@ def iss_detect(points: np.ndarray, radius=0.25):
             if not neighbor_idx in num_neighbors_cache:
                 neigneig_num, _, _ = search_tree.search_radius_vector_3d(points[neighbor_idx, :3], radius)
                 num_neighbors_cache[neighbor_idx] = neigneig_num - 1
-            weights.append(num_neighbors_cache[neighbor_idx])
+            weights.append(1.0/num_neighbors_cache[neighbor_idx])
             distans.append(points[neighbor_idx, :3] - center[:3])
         weights = np.array(weights)
         distans = np.array(distans)
@@ -95,7 +95,7 @@ def iss_detect(points: np.ndarray, radius=0.25):
         # 作者原论文中的公式的含义是 所有临近点的坐标列向量和其自身转置的行向量
         # 进行矩阵乘法，那么就得到一个3x3矩阵，所有临近点的3x3矩阵与对应临近点
         # 的权重w相乘后，再求和，这个和再除以所有临近点的权重之和。。。
-        covariance = (1.0/weights.sum()) * np.dot(distans.T, np.dot(np.diag(weights), distans)) # ??? 3x3 instead of nxn
+        covariance = np.dot(distans.T, np.dot(np.diag(weights), distans)) / weights.sum() # ??? 3x3 instead of nxn
         eigval, eigvec = np.linalg.eig(covariance)
         eigval = eigval[eigval.argsort()[::-1]] # 降序排序，原argsort是返回从小到大的元素索引
         
@@ -116,7 +116,7 @@ def iss_detect(points: np.ndarray, radius=0.25):
     while little_heap:
         _, top_idx = heapq.heappop(little_heap)
         if not top_idx in suppressed_points_indicies:
-            _, top_neighbors_indices, _ = search_tree.search_radius_vector_3d(points[top_idx, :3], radius * 2.0)
+            _, top_neighbors_indices, _ = search_tree.search_radius_vector_3d(points[top_idx, :3], radius)
             for idx in top_neighbors_indices[1:]:
                 suppressed_points_indicies.add(idx)
     
@@ -138,9 +138,11 @@ def iss_detect(points: np.ndarray, radius=0.25):
     # 分布致密，类似于细椭球，就像标枪一样，类似于一条直线。
     # 而直线也不是一个好的特征。
 
+    # eigval3_threshold = np.median(keypoints["eigval_3"].values)
     keypoints = keypoints.loc[
-        (keypoints["eigval_1"] > keypoints["eigval_2"]+1.5e-4) &
-        (keypoints["eigval_2"] > keypoints["eigval_3"]+1.5e-4),
+        (keypoints["eigval_1"] / keypoints["eigval_2"] > 1.5) &
+        (keypoints["eigval_2"] / keypoints["eigval_3"] > 1.5),
+        # keypoints["eigval_3"] > eigval3_threshold,
         keypoints.columns
     ]
 

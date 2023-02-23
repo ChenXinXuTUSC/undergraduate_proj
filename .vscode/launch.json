@@ -12,8 +12,11 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--data_root", "/home/hm/fuguiduo/datasets/ModelNet40_dense",
-                "--ICP_radius", "0.05"
+                // "--data_type", "ModelNet40Dense",
+                // "--data_root", "/home/hm/fuguiduo/datasets/ModelNet40_dense",
+                "--data_type", "ThreeDMatchFCGF", 
+                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--ICP_radius", "0.1"
             ]
         }
     ]

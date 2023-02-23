@@ -2,6 +2,8 @@ import os
 import numpy as np
 import collections
 import open3d as o3d
+
+from datasets import datasets
 import config
 import utils
 
@@ -36,98 +38,97 @@ CHECKRCONF = collections.namedtuple(
 
 if __name__ == "__main__":
     args = vars(config.args)
-    npzs = [os.path.join(args["data_root"], "npz", file) for file in sorted(os.listdir(os.path.join(args["data_root"], "npz")))]
-    txts = [os.path.join(args["data_root"], "txt", file) for file in sorted(os.listdir(os.path.join(args["data_root"], "txt")))]
 
-    # generate some demo pointcloud
-    with open(txts[0], 'r') as f:
-        lines = f.readlines()
-        lines = [line.rstrip().split(' ') for line in lines]
-        for line in lines:
-            # step1: read point clouds from npz
-            # , overwrite_rgb=True, new_rgb=[200, 0, 0]
-            # , overwrite_rgb=True, new_rgb=[0, 200, 0]
-            points1 = utils.npz2ply(os.path.join(args["3dmatch_root"], "npz", line[0]))
-            points2 = utils.npz2ply(os.path.join(args["3dmatch_root"], "npz", line[1]))
-            points1 = utils.voxel_down_sample(points1, args["ICP_radius"])
-            points2 = utils.voxel_down_sample(points2, args["ICP_radius"])
+    available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
+    dataloader = available_datasets[args["data_type"]](
+        root=args["data_root"],
+        shuffle=True,
+        augment=True,
+        augdgre=30.0,
+        augdist=2.0
+    )
 
-            # randomly rotate and translate
-            points1, rotmat, transd = utils.transform_augment(points1, 30.0, 2.0)
-            raxis, angle = utils.resolve_axis_angle(rotmat)
-            utils.log_info(f"augment raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd}")
+    for points1, points2, T, sample_name in dataloader:
+        utils.log_info(sample_name)
+        points1 = utils.voxel_down_sample(points1, args["ICP_radius"])
+        points2 = utils.voxel_down_sample(points2, args["ICP_radius"])
 
-            # step2: detect key points using ISS
-            keypoints1 = utils.iss_detect(points1, args["ICP_radius"])
-            keypoints2 = utils.iss_detect(points2, args["ICP_radius"])
+        # augment information
+        rotmat, transd = T[:3,:3], T[:3,3]
+        raxis, angle = utils.resolve_axis_angle(rotmat)
+        utils.log_info(f"augment raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd}")
 
-            # step3: compute FPFH for each key point
-            # 一般原始点云旋转变换之后，再进行法向量估计好一些，万一出错呢。。。
-            points1_o3d = utils.npy2o3d(points1)
-            points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
-            points2_o3d = utils.npy2o3d(points2)
-            points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
+        # step2: detect key points using ISS
+        keypoints1 = utils.iss_detect(points1, args["ICP_radius"])
+        keypoints2 = utils.iss_detect(points2, args["ICP_radius"])
+        points1[keypoints1["id"].values, 3:6] = np.array([0, 255, 255])
+        points2[keypoints2["id"].values, 3:6] = np.array([0, 255, 255])
 
-            keyfpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
-                points1_o3d.select_by_index(keypoints1["id"].values),
-                o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.5, max_nn=100)
-            ).data
-            keyfpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
-                points2_o3d.select_by_index(keypoints2["id"].values),
-                o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.5, max_nn=100)
-            ).data
+        # step3: compute FPFH for each key point
+        # 一般原始点云旋转变换之后，再进行法向量估计好一些，万一出错呢。。。
+        # points1_o3d = utils.npy2o3d(points1)
+        # points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
+        # points2_o3d = utils.npy2o3d(points2)
+        # points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
 
-            # step4: ransac initial registration
-            points1 = utils.o3d2npy(points1_o3d)
-            points2 = utils.o3d2npy(points2_o3d)
-            regis_res = utils.ransac_match(
-                points1, points2,
-                keyfpfhs1, keyfpfhs2,
-                ransac_params=RANSACCONF(
-                    max_workers=4, num_samples=4,
-                    max_correspondence_dist=args["ICP_radius"]*2.5,
-                    max_iter_num=10000, max_valid_num=500, max_refine_num=30
-                ),
-                checkr_params=CHECKRCONF(
-                    max_correspondence_dist=args["ICP_radius"]*2.5,
-                    max_mnn_dist_ratio=0.8,
-                    normal_angle_threshold=None
-                )
-            )
+        # keyfpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
+        #     points1_o3d.select_by_index(keypoints1["id"].values),
+        #     o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.5, max_nn=100)
+        # ).data
+        # keyfpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
+        #     points2_o3d.select_by_index(keypoints2["id"].values),
+        #     o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.5, max_nn=100)
+        # ).data
 
-            # todo: step5: ICP refinement
+        # # step4: ransac initial registration
+        # points1 = utils.o3d2npy(points1_o3d)
+        # points2 = utils.o3d2npy(points2_o3d)
+        # regis_res = utils.ransac_match(
+        #     points1, points2,
+        #     keyfpfhs1, keyfpfhs2,
+        #     ransac_params=RANSACCONF(
+        #         max_workers=4, num_samples=4,
+        #         max_correspondence_dist=args["ICP_radius"]*2.5,
+        #         max_iter_num=10000, max_valid_num=500, max_refine_num=30
+        #     ),
+        #     checkr_params=CHECKRCONF(
+        #         max_correspondence_dist=args["ICP_radius"]*2.5,
+        #         max_mnn_dist_ratio=0.8,
+        #         normal_angle_threshold=None
+        #     )
+        # )
 
-            if len(regis_res.correspondence_set) == 0:
-                utils.log_warn(f"{line} failed to recover the transformation")
-                continue
-            
-            T_pred = regis_res.transformation
-            rotmat_pred = T_pred[:3, :3]
-            transd_pred = T_pred[:3, 3]
-            raxis, angle = utils.resolve_axis_angle(rotmat_pred)
-            utils.log_info(f"pred raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd_pred}")
+        # # todo: step5: ICP refinement
 
-            points1 = utils.apply_transformation(points1, T_pred)
-            points1[keypoints1["id"].values, 3:6] = np.array([0, 255, 255])
-            points2[keypoints2["id"].values, 3:6] = np.array([0, 255, 255])
+        # if len(regis_res.correspondence_set) == 0:
+        #     utils.log_warn(f"{sample_name} failed to recover the transformation")
+        #     continue
+        
+        # T_pred = regis_res.transformation
+        # rotmat_pred = T_pred[:3, :3]
+        # transd_pred = T_pred[:3, 3]
+        # raxis, angle = utils.resolve_axis_angle(rotmat_pred)
+        # utils.log_info(f"pred raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd_pred}")
+
+        # points1 = utils.apply_transformation(points1, T_pred)
 
 
-            # output to file
-            out_dir  = "./isssample"
-            out_name = line[0].split('.')[0]+'_'+line[1].split('.')[0].split('@')[1]+'_'+line[2]+".ply"
-            ply_line_type = np.dtype(
-                [
-                    ("x", "f4"), 
-                    ("y", "f4"),
-                    ("z", "f4"), 
-                    ("red", "u1"), 
-                    ("green", "u1"), 
-                    ("blue", "u1"),
-                    ("nx", "f4"),
-                    ("ny", "f4"),
-                    ("nz", "f4")
-                ]
-            )
-            utils.fuse2frags(points1, points2, ply_line_type, out_dir, out_name)
-            utils.log_info(f"finish processing {out_name}")
+        # output to file
+        out_dir  = "./isssample"
+        out_name = sample_name + ".ply"
+        ply_line_type = np.dtype(
+            [
+                ("x", "f4"), 
+                ("y", "f4"),
+                ("z", "f4"), 
+                ("red", "u1"), 
+                ("green", "u1"), 
+                ("blue", "u1"),
+                ("nx", "f4"),
+                ("ny", "f4"),
+                ("nz", "f4")
+            ]
+        )
+        utils.fuse2frags(points1, points2, ply_line_type, out_dir, out_name)
+        utils.log_info(f"finish processing {out_name}")
 

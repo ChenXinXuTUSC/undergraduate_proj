@@ -11,17 +11,19 @@ import config
 
 if __name__ == "__main__":
     args = vars(config.args)
-    utils.log_dbug(f"{args}")
-    dataloader = datasets.ModelNet40Dense(
+    available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
+    utils.log_dbug("hello world", available_datasets)
+    dataloader = available_datasets[args["data_type"]](
         root=args["data_root"],
-        shuffle=False,
+        shuffle=True,
         augment=True,
-        augdgre=30.0,
+        augdgre=60.0,
         augdist=2.0
     )
 
-    utils.log_dbug(f"ModelNet40 dataset contains {len(dataloader)} samples")
-    a, b, T, name = dataloader[0]
+    utils.log_dbug(f"{args['data_type']} dataset contains {len(dataloader)} samples")
+    for a, b, T, name in dataloader:
+        utils.log_dbug("sample name:", name)
     ply_line_type = np.dtype(
                 [
                     ("x", "f4"), 

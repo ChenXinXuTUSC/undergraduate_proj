@@ -2,8 +2,6 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import numpy as np
-from plyfile import PlyData, PlyElement
-
 from tqdm import tqdm
 
 import utils
@@ -48,8 +46,10 @@ class ModelNet40Dense(PairDataset):
                 self.files.append((mdir, ply[:-4], os.path.abspath(os.path.join(root, mdir, ply))))
         
         if shuffle:
-            self.files = self.files[np.random.choice(range(len(self.files)), replace=False)]
+            np.random.shuffle(self.files)
         
+        self.iterate_pos = -1
+
     def __len__(self):
         return len(self.files)
     
@@ -80,8 +80,10 @@ class ModelNet40Dense(PairDataset):
         return points, points_aug, T, sample_name
 
     def __next__(self):
-        for i in range(len(self.files)):
-            return self.__getitem__(i)
+        self.iterate_pos += 1
+        if self.iterate_pos >= len(self.files):
+            raise StopIteration
+        return self[self.iterate_pos]
 
     def __iter__(self):
         return self
@@ -113,7 +115,9 @@ class ThreeDMatchFCGF(PairDataset):
                     )
         
         if shuffle:
-            self.files = self.files[np.random.choice(range(len(self.files)), replace=False)]
+            np.random.shuffle(self.files)
+        
+        self.iterate_pos = -1
     
     def __len__(self):
         return len(self.files)
@@ -122,6 +126,9 @@ class ThreeDMatchFCGF(PairDataset):
         sample_name, frag1_path, frag2_path = self.files[idx]
         frag1 = utils.npz2ply(frag1_path)
         frag2 = utils.npz2ply(frag2_path)
+        # add dummy uvw attributes
+        frag1 = np.concatenate((frag1, np.zeros((len(frag1), 3))), axis=1)
+        frag2 = np.concatenate((frag2, np.zeros((len(frag2), 3))), axis=1)
 
         if self.augment:
             frag2, rotmat, transd = utils.transform_augment(frag2, self.augdgre, self.augdist)
@@ -133,3 +140,11 @@ class ThreeDMatchFCGF(PairDataset):
 
         return frag1, frag2, T, sample_name
 
+    def __next__(self):
+        self.iterate_pos += 1
+        if self.iterate_pos >= len(self.files):
+            raise StopIteration
+        return self[self.iterate_pos]
+
+    def __iter__(self):
+        return self

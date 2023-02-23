@@ -132,7 +132,7 @@ def voxel_down_sample(points: np.ndarray, voxel_size: float):
     _, unique_indices = np.unique(voxel_indices[sorted_indices], return_index=True) # 重复元素在原数组第一次出现的下标
     unique_indices = np.append(unique_indices, len(points))
     
-    filtered_points = np.zeros((0,6))
+    filtered_points = np.zeros((0, points.shape[1]))
     for i in tqdm(range(len(unique_indices) - 1), total=len(unique_indices) - 1, ncols=100, desc="filtering"):
         filtered_points = np.append(filtered_points, [np.mean(points[sorted_indices[unique_indices[i]:unique_indices[i+1]]], axis=0)], axis=0)
     
