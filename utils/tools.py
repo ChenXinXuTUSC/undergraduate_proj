@@ -139,12 +139,43 @@ def voxel_down_sample(points: np.ndarray, voxel_size: float):
     log_info(f"original num: {len(points)}, after voxel down sample: {len(filtered_points)}")
     return filtered_points
 
-def fuse2frags(points1:np.ndarray, points2:np.ndarray, ply_line_type:np.dtype, out_dir:str=".", out_name:str="out.ply"):
-    # ply_line_type = np.dtype([("x", "f4"), ("y", "f4"), ("z", "f4"), ("red", "u1"), ("green", "u1"), ("blue", "u1")])
-    points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_line_type)
-    points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_line_type)
+def fuse2frags(
+        points1: np.ndarray, 
+        points2: np.ndarray, 
+        ply_vertex_type:np.dtype,
+        out_dir:str=".", out_name:str="out.ply"
+    ):
+    points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_vertex_type)
+    points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_vertex_type)
     points = np.concatenate([points1_plyformat, points2_plyformat], axis=0)
-    PlyData([PlyElement.describe(points, "vertex", comments="vertices")]).write(os.path.join(out_dir, out_name))
+    PlyData(
+        [
+            PlyElement.describe(points, "vertex", comments="vertices")
+        ]
+    ).write(os.path.join(out_dir, out_name))
+
+def fuse2frags_with_matches(
+        points1: np.ndarray, 
+        points2: np.ndarray, 
+        matches: np.ndarray,
+        ply_vertex_type:np.dtype,
+        ply_line_type:np.dtype,
+        out_dir:str=".", out_name:str="out.ply"
+    ):
+    points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_vertex_type)
+    points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_vertex_type)
+    points = np.concatenate([points1_plyformat, points2_plyformat], axis=0)
+    
+    base_offset = len(points1)
+    matches[:,1] += base_offset
+    edges = np.concatenate([matches, np.ones((len(matches), 3), dtype=np.int64) * 255], axis=1)
+    edges = np.array([tuple(line) for line in edges], dtype=ply_line_type)
+    PlyData(
+        [
+            PlyElement.describe(points, "vertex", comments="vertices"),
+            PlyElement.describe(edges, "edge", comments="lines")
+        ]
+    ).write(os.path.join(out_dir, out_name))
 
 def solve_procrustes(P,Q):
     '''
@@ -194,7 +225,7 @@ def apply_transformation(srcpts: np.ndarray, T: np.ndarray):
         return srcpts
     R = T[:3, :3]
     t = T[:3, 3]
-    if np.fabs(np.linalg.det(R) - 1.0) > 1e-3:
+    if np.fabs(np.linalg.det(np.dot(R, R.T)) - 1.0) > 1e-3:
         log_warn("invalid rotation matrix, not orthogonal")
         return srcpts
     

@@ -88,7 +88,7 @@ if __name__ == '__main__':
     distance_threshold_init = 1.5 * radius
     distance_threshold_final = 1.0 * radius
     init_result = ransac_match(
-        idx_target,idx_source,
+        idx_target, idx_source,
         pcd_source_keypoints, pcd_target_keypoints,
         fpfh_source_keypoints, fpfh_target_keypoints,
         ransac_params=RANSACParams(

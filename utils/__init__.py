@@ -16,3 +16,6 @@ from .iss import *
 
 from . import ransac
 from .ransac import *
+
+from . import icp
+from .icp import *
