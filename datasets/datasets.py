@@ -124,8 +124,8 @@ class ThreeDMatchFCGF(PairDataset):
     
     def __getitem__(self, idx):
         sample_name, frag1_path, frag2_path = self.files[idx]
-        frag1 = utils.npz2ply(frag1_path)
-        frag2 = utils.npz2ply(frag2_path)
+        frag1 = utils.npz2npy(frag1_path)
+        frag2 = utils.npz2npy(frag2_path)
         # add dummy uvw attributes
         frag1 = np.concatenate((frag1, np.zeros((len(frag1), 3))), axis=1)
         frag2 = np.concatenate((frag2, np.zeros((len(frag2), 3))), axis=1)

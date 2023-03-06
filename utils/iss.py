@@ -90,11 +90,8 @@ def iss_detect(points: np.ndarray, radius=0.25):
             distans.append(points[neighbor_idx, :3] - center[:3])
         weights = np.array(weights)
         distans = np.array(distans)
-        # 这里，原论文的所谓“点i的协方差矩阵”和概率论中多元随机变量的协方差矩阵
-        # 含义相差很大。这里，矩阵是指针对点i的，即其他近邻点之间又不计算协方差
-        # 作者原论文中的公式的含义是 所有临近点的坐标列向量和其自身转置的行向量
-        # 进行矩阵乘法，那么就得到一个3x3矩阵，所有临近点的3x3矩阵与对应临近点
-        # 的权重w相乘后，再求和，这个和再除以所有临近点的权重之和。。。
+        # 这里的协方差矩阵指的是变量维度之间的协方差，不是样本之间的协方差
+        # 因为只有坐标(x,y,z)三个维度，那么三个变量维度的协方差矩阵就是3x3的
         covariance = np.dot(distans.T, np.dot(np.diag(weights), distans)) / weights.sum() # ??? 3x3 instead of nxn
         eigval, eigvec = np.linalg.eig(covariance)
         eigval = eigval[eigval.argsort()[::-1]] # 降序排序，原argsort是返回从小到大的元素索引

@@ -39,6 +39,29 @@ CHECKRCONF = collections.namedtuple(
     ]
 )
 
+ply_vertex_type = np.dtype(
+    [
+        ("x", "f4"), 
+        ("y", "f4"),
+        ("z", "f4"), 
+        ("red", "u1"), 
+        ("green", "u1"), 
+        ("blue", "u1"),
+        ("nx", "f4"),
+        ("ny", "f4"),
+        ("nz", "f4")
+    ]
+)
+ply_edge_type = np.dtype(
+    [
+        ("vertex1", "uint32"), 
+        ("vertex2", "uint32"),
+        ("red", "u1"), 
+        ("green", "u1"), 
+        ("blue", "u1")
+    ]
+)
+
 if __name__ == "__main__":
     args = vars(config.args)
 
@@ -132,28 +155,6 @@ if __name__ == "__main__":
         # output to file
         out_dir  = "./samples/matches_sample"
         out_name = sample_name + ".ply"
-        ply_vertex_type = np.dtype(
-            [
-                ("x", "f4"), 
-                ("y", "f4"),
-                ("z", "f4"), 
-                ("red", "u1"), 
-                ("green", "u1"), 
-                ("blue", "u1"),
-                ("nx", "f4"),
-                ("ny", "f4"),
-                ("nz", "f4")
-            ]
-        )
-        ply_edge_type = np.dtype(
-            [
-                ("vertex1", "uint32"), 
-                ("vertex2", "uint32"),
-                ("red", "u1"), 
-                ("green", "u1"), 
-                ("blue", "u1")
-            ]
-        )
         utils.fuse2frags_with_matches(points1, points2, matches, ply_vertex_type, ply_edge_type, out_dir, out_name)
         utils.log_info(f"finish processing {out_name}")
 

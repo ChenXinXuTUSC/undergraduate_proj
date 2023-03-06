@@ -9,7 +9,7 @@ from tqdm import tqdm
 from . import colorlog
 from .colorlog import *
 
-def npz2ply(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
+def npz2npy(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
     '''
     这个函数是针对3DMatch-FCGF的npz数据文件读取设计的，并不通用，对于
     其他npz存储文件，并不能提前知道里面存储了哪些属性，但是针对当前的
@@ -138,6 +138,19 @@ def voxel_down_sample(points: np.ndarray, voxel_size: float):
     
     log_info(f"original num: {len(points)}, after voxel down sample: {len(filtered_points)}")
     return filtered_points
+
+def dump1frag(
+        points: np.ndarray,
+        ply_vertex_type:np.dtype,
+        out_dir:str=".",
+        out_name:str="out.ply"
+    ):
+    points = np.array([tuple(line) for line in points], dtype=ply_vertex_type)
+    PlyData(
+        [
+            PlyElement.describe(points, "vertex", comments="vertices")
+        ]
+    ).write(os.path.join(out_dir, out_name))
 
 def fuse2frags(
         points1: np.ndarray, 

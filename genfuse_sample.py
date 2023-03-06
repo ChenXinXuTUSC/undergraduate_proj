@@ -8,7 +8,7 @@ import config
 import utils
 
 
-def npz2ply(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
+def npz2npy(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
     if not os.path.exists(npz_path):
         raise Exception("npz file not exists, please check the path")
     if overwrite_rgb:
@@ -77,8 +77,8 @@ if __name__ == "__main__":
         for line in lines:
             # , overwrite_rgb=True, new_rgb=[255, 0, 0]
             # , overwrite_rgb=True, new_rgb=[0, 255, 0]
-            points1 = npz2ply(os.path.join(args["3dmatch_root"], "npz", line[0]))
-            points2 = npz2ply(os.path.join(args["3dmatch_root"], "npz", line[1]))
+            points1 = npz2npy(os.path.join(args["3dmatch_root"], "npz", line[0]))
+            points2 = npz2npy(os.path.join(args["3dmatch_root"], "npz", line[1]))
             # points1 = voxel_down_sample(points1, 0.05)
             # points2 = voxel_down_sample(points2, 0.05)
             # print(f"{line[0]}:{points1.shape}, {line[1]}:{points2.shape}, overlap ratio:{line[2]}")
