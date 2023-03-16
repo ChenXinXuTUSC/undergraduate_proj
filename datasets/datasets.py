@@ -65,19 +65,13 @@ class ModelNet40Dense(PairDataset):
         # add dummy rgb attributes, as point clouds
         # in ModelNet40 dataset don't have colors.
         points = np.concatenate((points[:,0:3], np.zeros((len(points), 3)), points[:,3:6]), axis=1)
-
         points_aug = points.copy()
-        rotmat = np.identity(3)
-        transd = np.array([0,0,0])
 
         if self.augment:
-            points_aug, rotmat, transd = utils.transform_augment(points_aug, self.augdgre, self.augdist)
+            T_gt = utils.build_random_transform(self.augdgre, self.augdist)
+            points_aug = utils.apply_transformation(points_aug, T_gt)
         
-        T = np.zeros((4, 4))
-        T[:3,:3] = rotmat
-        T[:3 ,3] = transd
-        T[3,3] = 1.0
-        return points, points_aug, T, sample_name
+        return points, points_aug, T_gt, sample_name
 
     def __next__(self):
         self.iterate_pos += 1
@@ -131,14 +125,10 @@ class ThreeDMatchFCGF(PairDataset):
         frag2 = np.concatenate((frag2, np.zeros((len(frag2), 3))), axis=1)
 
         if self.augment:
-            frag2, rotmat, transd = utils.transform_augment(frag2, self.augdgre, self.augdist)
-        
-        T = np.zeros((4, 4))
-        T[:3,:3] = rotmat
-        T[:3 ,3] = transd
-        T[3,3] = 1.0
+            T_gt = utils.build_random_transform(self.augdgre, self.augdist)
+            frag2 = utils.apply_transformation(frag2, T_gt)
 
-        return frag1, frag2, T, sample_name
+        return frag1, frag2, T_gt, sample_name
 
     def __next__(self):
         self.iterate_pos += 1

@@ -1,5 +1,4 @@
 import os
-import heapq
 import numpy as np
 import pandas as pd
 from plyfile import PlyData, PlyElement
@@ -8,6 +7,29 @@ from tqdm import tqdm
 
 from . import colorlog
 from .colorlog import *
+
+ply_vertex_type = np.dtype(
+    [
+        ("x", "f4"), 
+        ("y", "f4"),
+        ("z", "f4"), 
+        ("red", "u1"), 
+        ("green", "u1"), 
+        ("blue", "u1"),
+        ("nx", "f4"),
+        ("ny", "f4"),
+        ("nz", "f4")
+    ]
+)
+ply_edge_type = np.dtype(
+    [
+        ("vertex1", "uint32"), 
+        ("vertex2", "uint32"),
+        ("red", "u1"), 
+        ("green", "u1"), 
+        ("blue", "u1")
+    ]
+)
 
 def npz2npy(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
     '''
@@ -83,7 +105,7 @@ def ply2npy(ply_path:str):
         return None
     return npy_points
 
-def transform_augment(points: np.ndarray, angle: float, dist: float):
+def transform_augment(points:np.ndarray, angle:float, dist:float):
     ''' 
     Randomly rotate the point clouds along the Y-aixs\
     and randomly translate to augment the dataset.
@@ -116,7 +138,24 @@ def transform_augment(points: np.ndarray, angle: float, dist: float):
         points[:, 6:9] = np.dot(points[:, 6:9], rotmat)
     return points, rotmat, transd
 
-def voxel_down_sample(points: np.ndarray, voxel_size: float):
+def build_random_transform(angle:float, dist:float):
+    rotation_angle = np.random.uniform() * (angle / 180.0) * np.pi # convert to pi
+    cosval = np.cos(rotation_angle)
+    sinval = np.sin(rotation_angle)
+    rotmat = np.array(
+        [
+            [cosval,  0.0, sinval],
+            [0.0,     1.0,    0.0],
+            [-sinval, 0.0, cosval]
+        ]
+    )
+    transd = np.array([np.random.uniform(), np.random.uniform(), np.random.uniform()]) * dist
+    T = np.eye(4)
+    T[:3,:3] = rotmat
+    T[:3, 3] = transd
+    return T
+
+def voxel_down_sample(points:np.ndarray, voxel_size:float):
     '''
     makes sure that the first 3 dimension of the points arr\n
     is (x,y,z) coordinates
@@ -140,12 +179,14 @@ def voxel_down_sample(points: np.ndarray, voxel_size: float):
     return filtered_points
 
 def dump1frag(
-        points: np.ndarray,
+        points:np.ndarray,
         ply_vertex_type:np.dtype,
         out_dir:str=".",
         out_name:str="out.ply"
     ):
     points = np.array([tuple(line) for line in points], dtype=ply_vertex_type)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir, mode=0o774)
     PlyData(
         [
             PlyElement.describe(points, "vertex", comments="vertices")
@@ -153,8 +194,8 @@ def dump1frag(
     ).write(os.path.join(out_dir, out_name))
 
 def fuse2frags(
-        points1: np.ndarray, 
-        points2: np.ndarray, 
+        points1:np.ndarray, 
+        points2:np.ndarray, 
         ply_vertex_type:np.dtype,
         out_dir:str=".", out_name:str="out.ply"
     ):
@@ -168,9 +209,9 @@ def fuse2frags(
     ).write(os.path.join(out_dir, out_name))
 
 def fuse2frags_with_matches(
-        points1: np.ndarray, 
-        points2: np.ndarray, 
-        matches: np.ndarray,
+        points1:np.ndarray, 
+        points2:np.ndarray, 
+        matches:np.ndarray,
         ply_vertex_type:np.dtype,
         ply_line_type:np.dtype,
         out_dir:str=".", out_name:str="out.ply"
@@ -232,7 +273,7 @@ def solve_procrustes(P,Q):
     T[3, 3] = 1.0
     return T
 
-def apply_transformation(srcpts: np.ndarray, T: np.ndarray):
+def apply_transformation(srcpts:np.ndarray, T:np.ndarray):
     if T.shape != (4, 4):
         log_warn("invalid transformation matrix")
         return srcpts
@@ -241,20 +282,29 @@ def apply_transformation(srcpts: np.ndarray, T: np.ndarray):
     if np.fabs(np.linalg.det(np.dot(R, R.T)) - 1.0) > 1e-3:
         log_warn("invalid rotation matrix, not orthogonal")
         return srcpts
-    
-    srcpts[:, :3] = np.dot(srcpts[:, :3], R) + t
+    srcpts[:, :3] = srcpts[:, :3] @ R + t
+    if srcpts.shape[1] >= 9:
+        # 该函数只能假设点云的特征排列是(x,y,z,r,g,b,u,v,w)
+        # 即最后三个位置存放法向量方向
+        srcpts[:, 6:9] = srcpts[:, 6:9] @ R
     return srcpts
 
-def resolve_axis_angle(R: np.ndarray):
+def resolve_axis_angle(T:np.ndarray, deg:bool):
     '''
     this function is referencing:\n
     https://blog.csdn.net/Sandy_WYM_/article/details/84309000
     '''
-    if R.shape != (3,3):
-        log_warn("invalid rotation matrix")
+    if T.shape != (3, 3) and T.shape != (4, 4):
+        log_warn("invalid rotation/transformation matrix")
         return None, None
     
+    R = T
+    if T.shape == (4, 4):
+        R = T[:3,:3]
     angle = np.arccos((R.trace() - 1.0)/2.0)
+    if deg:
+        # if in degree format instead of radian
+        angle = angle / np.pi * 180.0
     raxis = np.array([R[2,1]-R[1,2], R[0,2]-R[2,0], R[1,0]-R[0,1]]) / (2.0 * np.sin(angle))
     raxis = raxis / np.sqrt((raxis * raxis).sum()) # normalization
     return raxis, angle

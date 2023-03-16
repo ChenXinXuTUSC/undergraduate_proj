@@ -39,29 +39,6 @@ CHECKRCONF = collections.namedtuple(
     ]
 )
 
-ply_vertex_type = np.dtype(
-    [
-        ("x", "f4"), 
-        ("y", "f4"),
-        ("z", "f4"), 
-        ("red", "u1"), 
-        ("green", "u1"), 
-        ("blue", "u1"),
-        ("nx", "f4"),
-        ("ny", "f4"),
-        ("nz", "f4")
-    ]
-)
-ply_edge_type = np.dtype(
-    [
-        ("vertex1", "uint32"), 
-        ("vertex2", "uint32"),
-        ("red", "u1"), 
-        ("green", "u1"), 
-        ("blue", "u1")
-    ]
-)
-
 if __name__ == "__main__":
     args = vars(config.args)
 
@@ -80,11 +57,6 @@ if __name__ == "__main__":
         points1 = utils.voxel_down_sample(points1, args["ICP_radius"])
         points2 = utils.voxel_down_sample(points2, args["ICP_radius"])
 
-        # augment information
-        rotmat, transd = T[:3,:3], T[:3,3]
-        raxis, angle = utils.resolve_axis_angle(rotmat)
-        utils.log_info(f"augment raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd}")
-
         # step2: detect key points using ISS
         keypoints1 = utils.iss_detect(points1, args["ICP_radius"])
         keypoints2 = utils.iss_detect(points2, args["ICP_radius"])
@@ -92,8 +64,8 @@ if __name__ == "__main__":
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
         # 给关键点上亮色
-        points1[keypoints1["id"].values, 3:6] = np.array([0, 255, 255])
-        points2[keypoints2["id"].values, 3:6] = np.array([0, 255, 255])
+        points1[keypoints1["id"].values, 3:6] = np.array([255, 0, 0])
+        points2[keypoints2["id"].values, 3:6] = np.array([255, 0, 0])
 
         # step3: compute FPFH for each key point
         points1_o3d = utils.npy2o3d(points1)
@@ -134,7 +106,7 @@ if __name__ == "__main__":
         )
 
         if len(initial_ransac.correspondence_set) == 0:
-            utils.log_warn(f"{sample_name} failed to recover the transformation")
+            utils.log_warn(sample_name, "failed to recover the transformation")
             continue
         
         search_tree_points2 = o3d.geometry.KDTreeFlann(points2_o3d)
@@ -145,16 +117,14 @@ if __name__ == "__main__":
         )
 
         T_pred = final_result.transformation
-        rotmat_pred = T_pred[:3, :3]
-        transd_pred = T_pred[:3, 3]
-        raxis, angle = utils.resolve_axis_angle(rotmat_pred)
-        utils.log_info(f"pred raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd_pred}")
+        utils.log_info("gdth T:", utils.resolve_axis_angle(T,      deg=True))
+        utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True))
 
         points1 = utils.apply_transformation(points1, T_pred)
 
         # output to file
         out_dir  = "./samples/matches_sample"
         out_name = sample_name + ".ply"
-        utils.fuse2frags_with_matches(points1, points2, matches, ply_vertex_type, ply_edge_type, out_dir, out_name)
+        utils.fuse2frags_with_matches(points1, points2, matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, out_name)
         utils.log_info(f"finish processing {out_name}")
 
