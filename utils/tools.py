@@ -23,10 +23,10 @@ ply_vertex_type = np.dtype(
 )
 ply_edge_type = np.dtype(
     [
-        ("vertex1", "uint32"), 
-        ("vertex2", "uint32"),
+        ("vertex1", "int32"), 
+        ("vertex2", "int32"),
         ("red", "u1"), 
-        ("green", "u1"), 
+        ("green", "u1"),
         ("blue", "u1")
     ]
 )
@@ -172,10 +172,10 @@ def voxel_down_sample(points:np.ndarray, voxel_size:float):
     unique_indices = np.append(unique_indices, len(points))
     
     filtered_points = np.zeros((0, points.shape[1]))
-    for i in tqdm(range(len(unique_indices) - 1), total=len(unique_indices) - 1, ncols=100, desc="filtering"):
+    for i in range(len(unique_indices) - 1):
         filtered_points = np.append(filtered_points, [np.mean(points[sorted_indices[unique_indices[i]:unique_indices[i+1]]], axis=0)], axis=0)
     
-    log_info(f"original num: {len(points)}, after voxel down sample: {len(filtered_points)}")
+    log_info(f"voxel downsample: {len(points)}->{len(filtered_points)}")
     return filtered_points
 
 def dump1frag(
@@ -204,7 +204,7 @@ def fuse2frags(
     points = np.concatenate([points1_plyformat, points2_plyformat], axis=0)
     PlyData(
         [
-            PlyElement.describe(points, "vertex", comments="vertices")
+            PlyElement.describe(points, "vertex", comments=["vertices"])
         ]
     ).write(os.path.join(out_dir, out_name))
 
@@ -221,14 +221,14 @@ def fuse2frags_with_matches(
     points = np.concatenate([points1_plyformat, points2_plyformat], axis=0)
     
     base_offset = len(points1)
-    matches[:,1] += base_offset
-    edges = np.concatenate([matches, np.ones((len(matches), 3), dtype=np.int64) * 255], axis=1)
+    matches[:,1] += base_offset - 1
+    edges = np.concatenate([matches, np.array([[255, 0, 255]]).repeat(len(matches), axis=0)], axis=1)
     edges = np.array([tuple(line) for line in edges], dtype=ply_line_type)
     PlyData(
         [
-            PlyElement.describe(points, "vertex", comments="vertices"),
-            PlyElement.describe(edges, "edge", comments="lines")
-        ]
+            PlyElement.describe(points, "vertex", comments=["vertices"]),
+            PlyElement.describe(edges, "edge", comments=["edges"])
+        ], text=True
     ).write(os.path.join(out_dir, out_name))
 
 def solve_procrustes(P,Q):

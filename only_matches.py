@@ -51,26 +51,23 @@ if __name__ == "__main__":
         augdist=4.0
     )
 
-    for points1, points2, T, sample_name in dataloader:
+    for points1, points2, T_gdth, sample_name in dataloader:
         utils.log_info(sample_name)
         # step1: voxel downsample
         points1 = utils.voxel_down_sample(points1, args["ICP_radius"])
         points2 = utils.voxel_down_sample(points2, args["ICP_radius"])
 
         # step2: detect key points using ISS
-        keypoints1 = utils.iss_detect(points1, args["ICP_radius"])
-        keypoints2 = utils.iss_detect(points2, args["ICP_radius"])
+        keypoints1 = utils.iss_detect(points1, args["ICP_radius"] * 2.0)
+        keypoints2 = utils.iss_detect(points2, args["ICP_radius"] * 2.0)
         if len(keypoints1["id"].values) == 0 or len(keypoints2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
-        # 给关键点上亮色
-        points1[keypoints1["id"].values, 3:6] = np.array([255, 0, 0])
-        points2[keypoints2["id"].values, 3:6] = np.array([255, 0, 0])
 
         # step3: compute FPFH for each key point
         points1_o3d = utils.npy2o3d(points1)
-        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
         points2_o3d = utils.npy2o3d(points2)
+        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
         points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
 
         points1_kps = points1_o3d.select_by_index(keypoints1["id"].values)
@@ -84,47 +81,53 @@ if __name__ == "__main__":
             o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*5.0, max_nn=100)
         ).data
 
-        # 给关键点做FPFH近邻搜索匹配画线
+        # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfpfhs1, keyfpfhs2)
         matches = np.array([keypoints1["id"].values[matches[:,0]], keypoints2["id"].values[matches[:,1]]]).T
 
         # step4: ransac initial registration
-        initial_ransac = utils.ransac_match_copy(
-            None,        None,
-            points1_kps, points2_kps,
-            keyfpfhs1,   keyfpfhs2,
-            ransac_params=RANSACCONF(
-                max_workers=4, num_samples=4,
-                max_correspondence_dist=args["ICP_radius"]*1.5,
-                max_iter_num=20000, max_valid_num=500, max_refine_num=30
-            ),
-            checkr_params=CHECKRCONF(
-                max_correspondence_dist=args["ICP_radius"]*1.5,
-                max_mnn_dist_ratio=0.81,
-                normal_angle_threshold=None
-            )
-        )
+        # initial_ransac = utils.ransac_match_copy(
+        #     None,        None,
+        #     points1_kps, points2_kps,
+        #     keyfpfhs1,   keyfpfhs2,
+        #     ransac_params=RANSACCONF(
+        #         max_workers=4, num_samples=4,
+        #         max_correspondence_dist=args["ICP_radius"]*1.5,
+        #         max_iter_num=20000, max_valid_num=500, max_refine_num=30
+        #     ),
+        #     checkr_params=CHECKRCONF(
+        #         max_correspondence_dist=args["ICP_radius"]*1.5,
+        #         max_mnn_dist_ratio=0.81,
+        #         normal_angle_threshold=None
+        #     )
+        # )
 
-        if len(initial_ransac.correspondence_set) == 0:
-            utils.log_warn(sample_name, "failed to recover the transformation")
-            continue
+        # if len(initial_ransac.correspondence_set) == 0:
+        #     utils.log_warn(sample_name, "failed to recover the transformation")
+        #     continue
         
-        search_tree_points2 = o3d.geometry.KDTreeFlann(points2_o3d)
-        final_result = icp.ICP_exact_match_copy(
-            points1_o3d, points2_o3d, search_tree_points2, 
-            initial_ransac.transformation, args["ICP_radius"]*1.0,
-            1000
-        )
+        # search_tree_points2 = o3d.geometry.KDTreeFlann(points2_o3d)
+        # final_result = icp.ICP_exact_match_copy(
+        #     points1_o3d, points2_o3d, search_tree_points2, 
+        #     initial_ransac.transformation, args["ICP_radius"]*1.0,
+        #     1000
+        # )
 
-        T_pred = final_result.transformation
-        utils.log_info("gdth T:", utils.resolve_axis_angle(T,      deg=True))
-        utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True))
+        # T_pred = final_result.transformation
+        # utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True))
+        # utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True))
 
-        points1 = utils.apply_transformation(points1, T_pred)
+        # points1 = utils.apply_transformation(points1, T_pred)
 
         # output to file
         out_dir  = "./samples/matches_sample"
         out_name = sample_name + ".ply"
+        points1[:, 3:6] = np.array([200, 200, 0], dtype=np.int32)
+        points2[:, 3:6] = np.array([0, 200, 200], dtype=np.int32)
+        # 给关键点上亮色
+        points1[keypoints1["id"].values, 3:6] = np.array([255, 0, 255])
+        points2[keypoints2["id"].values, 3:6] = np.array([255, 0, 255])
         utils.fuse2frags_with_matches(points1, points2, matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, out_name)
         utils.log_info(f"finish processing {out_name}")
+        break # only for test
 

@@ -5,17 +5,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: 当前文件",
+            "name": "modelnet40",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "only_matches.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                // "--data_type", "ModelNet40Dense",
-                // "--data_root", "/home/hm/fuguiduo/datasets/ModelNet40_dense",
-                "--data_type", "ThreeDMatchFCGF", 
-                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--ICP_radius", "0.01"
+            ]
+        },
+        {
+            "name": "3DMatch-FCGF",
+            "type": "python",
+            "request": "launch",
+            "program": "only_matches.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--ICP_radius", "0.05"
             ]
         }

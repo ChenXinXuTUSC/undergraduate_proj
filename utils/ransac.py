@@ -209,6 +209,7 @@ def ransac_match_copy(
 
     # build search tree on the target:
     search_tree_target = o3d.geometry.KDTreeFlann(target_pcd)
+    # FLANN stands for fast library for aproximate nearest neighbours
 
     T = None
     # step 5.2 select 4 pairs at each iteration,选择4对corresponding 进行模型拟合
