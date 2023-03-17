@@ -1,11 +1,10 @@
 import os
+import copy
 import numpy as np
 import pandas as pd
 from plyfile import PlyData, PlyElement
 import open3d as o3d
-from tqdm import tqdm
 
-from . import colorlog
 from .colorlog import *
 
 ply_vertex_type = np.dtype(
@@ -221,7 +220,7 @@ def fuse2frags_with_matches(
     points = np.concatenate([points1_plyformat, points2_plyformat], axis=0)
     
     base_offset = len(points1)
-    matches[:,1] += base_offset - 1
+    matches[:,1] += base_offset
     edges = np.concatenate([matches, np.array([[255, 0, 255]]).repeat(len(matches), axis=0)], axis=1)
     edges = np.array([tuple(line) for line in edges], dtype=ply_line_type)
     PlyData(
@@ -274,6 +273,7 @@ def solve_procrustes(P,Q):
     return T
 
 def apply_transformation(srcpts:np.ndarray, T:np.ndarray):
+    srcpts = copy.deepcopy(srcpts)
     if T.shape != (4, 4):
         log_warn("invalid transformation matrix")
         return srcpts
@@ -308,3 +308,31 @@ def resolve_axis_angle(T:np.ndarray, deg:bool):
     raxis = np.array([R[2,1]-R[1,2], R[0,2]-R[2,0], R[1,0]-R[0,1]]) / (2.0 * np.sin(angle))
     raxis = raxis / np.sqrt((raxis * raxis).sum()) # normalization
     return raxis, angle
+
+def ground_truth_matches(matches:np.ndarray, pcd1, pcd2, radius:float, T:np.ndarray):
+    '''
+    params
+    ----------
+    * matches: 2xN np.ndarray
+    * pcd1: 3xN np.ndarray or o3d.geometry.PointCloud
+    * pcd2: 3xN np.ndarray or o3d.geometry.PointCloud
+    * radius: radius for outlier matches
+    * T: 4x4 homogeneous transformation if pcd1 and pcd2 is not aligned
+
+    return
+    ----------
+    * is_correct: 1XN boolean np.ndarray that indicates inlier matches
+    '''
+    pcd1 = copy.deepcopy(pcd1)
+    pcd2 = copy.deepcopy(pcd2)
+    if type(pcd1) == o3d.geometry.PointCloud:
+        pcd1 = o3d2npy(pcd1)[:, :3]
+    if type(pcd2) == o3d.geometry.PointCloud:
+        pcd2 = o3d2npy(pcd2)[:, :3]
+
+    if T is not None:
+        pcd1 = apply_transformation(pcd1, T)
+    
+    is_correct = ((pcd1[matches[:, 0]] - pcd2[matches[:, 1]]) ** 2).sum(axis=1) < radius ** 2
+    # log_dbug("in filter:\n", ((pcd1[matches[is_correct][:, 0]] - pcd2[matches[is_correct][:, 1]]) ** 2).sum(axis=1))
+    return is_correct

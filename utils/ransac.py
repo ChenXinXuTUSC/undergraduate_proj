@@ -26,7 +26,15 @@ def init_matches(srcfds:np.ndarray, dstfds:np.ndarray):
         # 试过后发现好像也不用列向量啊？？？
         _, dst_idx, _ = fpfh_search_tree.search_knn_vector_xd(query, 1)
         rough_matches.append([col_idx, dst_idx[0]])
+    
     return np.asarray(rough_matches)
+
+def filter_matches(matches:np.ndarray, keyfpfhs1:np.ndarray, keyfpfhs2:np.ndarray):
+    avg_fdist = np.sqrt(((keyfpfhs1[:, matches[:, 0]] - keyfpfhs2[:, matches[:, 1]]) ** 2).sum(axis=1)) / len(matches)
+    avg_fdist = np.reshape(avg_fdist, (len(avg_fdist), 1))
+    all_fdist = np.sqrt(((keyfpfhs1[:, matches[:, 0]] - keyfpfhs2[:, matches[:, 1]]) ** 2))
+    valid_mask = (all_fdist < avg_fdist).astype(np.int32).sum(axis=0) > 20
+    return matches[valid_mask]
 
 def one_iter_match(
         srckts, dstkts, 

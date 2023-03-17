@@ -1,13 +1,14 @@
 import utils
 
-from . import simpleunet
+from . import simpleunet, resunet, pyramid
 
 MODELS = []
-
 
 def add_models(module):
     MODELS.extend([getattr(module, attr) for attr in dir(module) if 'Net' in attr or 'MLP' in attr])
 add_models(simpleunet)
+add_models(resunet)
+add_models(pyramid)
 
 def load_model(name):
     '''

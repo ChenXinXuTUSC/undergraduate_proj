@@ -58,32 +58,41 @@ if __name__ == "__main__":
         points2 = utils.voxel_down_sample(points2, args["ICP_radius"])
 
         # step2: detect key points using ISS
-        keypoints1 = utils.iss_detect(points1, args["ICP_radius"] * 2.0)
-        keypoints2 = utils.iss_detect(points2, args["ICP_radius"] * 2.0)
-        if len(keypoints1["id"].values) == 0 or len(keypoints2["id"].values) == 0:
+        keyptsdict1 = utils.iss_detect(points1, args["ICP_radius"] * 2.0)
+        keyptsdict2 = utils.iss_detect(points2, args["ICP_radius"] * 2.0)
+        if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
+        keypts1 = points1[keyptsdict1["id"].values]
+        keypts2 = points2[keyptsdict2["id"].values]
 
         # step3: compute FPFH for each key point
         points1_o3d = utils.npy2o3d(points1)
         points2_o3d = utils.npy2o3d(points2)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
         points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*2.0, max_nn=30))
-
-        points1_kps = points1_o3d.select_by_index(keypoints1["id"].values)
-        keyfpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
-            points1_kps,
-            o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*5.0, max_nn=100)
+        # compute all points' fpfh
+        fpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
+            points1_o3d,
+            o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*1.5, max_nn=30)
         ).data
-        points2_kps = points2_o3d.select_by_index(keypoints2["id"].values)
-        keyfpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
-            points2_kps,
-            o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*5.0, max_nn=100)
+        fpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
+            points2_o3d,
+            o3d.geometry.KDTreeSearchParamHybrid(radius=args["ICP_radius"]*1.5, max_nn=30)
         ).data
-
+        # only select key points' fpfh
+        keyfpfhs1 = fpfhs1[:, keyptsdict1["id"].values]
+        keyfpfhs2 = fpfhs2[:, keyptsdict2["id"].values]
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfpfhs1, keyfpfhs2)
-        matches = np.array([keypoints1["id"].values[matches[:,0]], keypoints2["id"].values[matches[:,1]]]).T
+        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args["ICP_radius"], T_gdth) # 上帝视角
+        utils.log_info("gdth matches:", correct.astype(np.int32).sum())
+        # matches = utils.filter_matches(matches, keyfpfhs1, keyfpfhs2)
+        # utils.log_info("fltr matches:", len(matches))
+        # 将对匹配对索引从关键点集合映射回原点云集合
+        matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T[correct]
+
+        # filter outliers
 
         # step4: ransac initial registration
         # initial_ransac = utils.ransac_match_copy(
@@ -124,9 +133,11 @@ if __name__ == "__main__":
         out_name = sample_name + ".ply"
         points1[:, 3:6] = np.array([200, 200, 0], dtype=np.int32)
         points2[:, 3:6] = np.array([0, 200, 200], dtype=np.int32)
-        # 给关键点上亮色
-        points1[keypoints1["id"].values, 3:6] = np.array([255, 0, 255])
-        points2[keypoints2["id"].values, 3:6] = np.array([255, 0, 255])
+        # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
+        points1[keyptsdict1["id"].values, 3:6] = np.array([255, 0, 0])
+        points2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
+        # uncomment the following when need to debug through visualization
+        # points1 = utils.apply_transformation(points1, T_gdth)
         utils.fuse2frags_with_matches(points1, points2, matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, out_name)
         utils.log_info(f"finish processing {out_name}")
         break # only for test

@@ -48,15 +48,11 @@ if __name__ == "__main__":
         augdist=2.0
     )
 
-    for points1, points2, T, sample_name in dataloader:
+    for points1, points2, T_gdth, sample_name in dataloader:
         utils.log_info(sample_name)
-        points1 = utils.voxel_down_sample(points1, args["ICP_radius"])
-        points2 = utils.voxel_down_sample(points2, args["ICP_radius"])
-
-        # augment information
-        rotmat, transd = T[:3,:3], T[:3,3]
-        raxis, angle = utils.resolve_axis_angle(rotmat)
-        utils.log_info(f"augment raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd}")
+        # step1: voxel down sample
+        points1 = utils.voxel_down_sample(points1, args["ICP_radius"] * 2.0)
+        points2 = utils.voxel_down_sample(points2, args["ICP_radius"] * 2.0)
 
         # step2: detect key points using ISS
         keypoints1 = utils.iss_detect(points1, args["ICP_radius"])
@@ -64,8 +60,6 @@ if __name__ == "__main__":
         if len(keypoints1["id"].values) == 0 or len(keypoints2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
-        points1[keypoints1["id"].values, 3:6] = np.array([0, 255, 255])
-        points2[keypoints2["id"].values, 3:6] = np.array([0, 255, 255])
 
         # step3: compute FPFH for each key point
         # 一般原始点云旋转变换之后，再进行法向量估计好一些，万一出错呢。。。
@@ -91,11 +85,11 @@ if __name__ == "__main__":
             keyfpfhs1, keyfpfhs2,
             ransac_params=RANSACCONF(
                 max_workers=4, num_samples=4,
-                max_correspondence_dist=args["ICP_radius"],
+                max_correspondence_dist=args["ICP_radius"] * 1.5,
                 max_iter_num=100, max_valid_num=50, max_refine_num=30
             ),
             checkr_params=CHECKRCONF(
-                max_correspondence_dist=args["ICP_radius"],
+                max_correspondence_dist=args["ICP_radius"] * 1.5,
                 max_mnn_dist_ratio=0.40,
                 normal_angle_threshold=None
             )
@@ -114,30 +108,14 @@ if __name__ == "__main__":
             continue
         
         T_pred = final_result.transformation
-        rotmat_pred = T_pred[:3, :3]
-        transd_pred = T_pred[:3, 3]
-        raxis, angle = utils.resolve_axis_angle(rotmat_pred)
-        utils.log_info(f"pred raxis:{raxis}, angle:{np.arctan(angle)*180/np.pi :.2f}, transd:{transd_pred}")
+        utils.log_info(f"pred T: {utils.resolve_axis_angle(T_pred, deg=True)}")
+        utils.log_info(f"gdth T: {utils.resolve_axis_angle(T_gdth, deg=True)}")
 
         points1 = utils.apply_transformation(points1, T_pred)
-
 
         # output to file
         out_dir  = "./isssample"
         out_name = sample_name + ".ply"
-        ply_line_type = np.dtype(
-            [
-                ("x", "f4"), 
-                ("y", "f4"),
-                ("z", "f4"), 
-                ("red", "u1"), 
-                ("green", "u1"), 
-                ("blue", "u1"),
-                ("nx", "f4"),
-                ("ny", "f4"),
-                ("nz", "f4")
-            ]
-        )
-        utils.fuse2frags(points1, points2, ply_line_type, out_dir, out_name)
+        utils.fuse2frags(points1, points2, utils.ply_line_type, out_dir, out_name)
         utils.log_info(f"finish processing {out_name}")
 
