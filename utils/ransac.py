@@ -57,7 +57,6 @@ def one_iter_match(
         if not is_valid_normal_match:
             return None
     
-
     srckts = srckts[:,:3]
     dstkts = dstkts[:,:3]
     # 使用pdist计算点集中两两点之间的欧氏距离，这是一个强假设
@@ -76,10 +75,10 @@ def one_iter_match(
     
     T = solve_procrustes(srckts, dstkts)
     R, t = T[0:3, 0:3], T[0:3, 3]
-
+    log_dbug(resolve_axis_angle(T, deg=True))
     # deviation to judge outlier and inlier
     deviation = np.linalg.norm(dstkts - np.dot(srckts, R) - t, axis=1)
-    is_valid_deviation_match = np.all(deviation <= checkr_params.max_correspondence_dist)
+    is_valid_deviation_match = np.all(deviation <= checkr_params.max_corresponding_dist)
     if not is_valid_deviation_match:
         return None
     
@@ -91,7 +90,8 @@ def ransac_match(
         srcfds: np.ndarray,
         dstfds: np.ndarray,
         ransac_params,
-        checkr_params
+        checkr_params,
+        matches=None
     ):
     '''
     params
@@ -105,7 +105,8 @@ def ransac_match(
     -
     * registration_res - contains 4x4 SE(3) and nx2 corresponding feat set
     '''
-    matches = init_matches(srcfds, dstfds)
+    if matches is None:
+        matches = init_matches(srcfds, dstfds)
 
     # build search tree on dst feature points
     dst_search_tree = o3d.geometry.KDTreeFlann(npy2o3d(dstkts))
@@ -135,24 +136,24 @@ def ransac_match(
     best_res = icp.ICP_exact_match(
         srckts, dstkts, dst_search_tree,
         initial_T,
-        ransac_params.max_correspondence_dist, ransac_params.max_refine_num
+        ransac_params.max_corresponding_dist, ransac_params.max_refine_num
     )
     num_validation = 0
     for _ in tqdm(range(ransac_params.max_iter_num), total=ransac_params.max_iter_num, ncols=100, desc="ICP refining"):
         T = validator(next(proposal_generator))
         # check validity
-        curr_res = icp.ICP_exact_match(
-            srckts, dstkts, dst_search_tree,
-            T,
-            ransac_params.max_corresponding_dist, ransac_params.max_refine_num
-        )
-        if curr_res.fitness < best_res.fitness:
-            best_res = curr_res
-        # if T is not None and num_validation < ransac_params.max_valid_num:
-        #     num_validation += 1
+        if T is not None and num_validation < ransac_params.max_valid_num:
+            curr_res = icp.ICP_exact_match(
+                srckts, dstkts, dst_search_tree,
+                T,
+                ransac_params.max_corresponding_dist, ransac_params.max_refine_num
+            )
+            if curr_res.fitness < best_res.fitness:
+                best_res = curr_res
+            num_validation += 1
         
-        # if num_validation == ransac_params.max_valid_num:
-        #     break
+        if num_validation == ransac_params.max_valid_num:
+            break
     log_info(f"ICP refinement: {best_res}")
     return best_res
 
@@ -210,10 +211,12 @@ def ransac_match_copy(
         source_idx, target_idx,
         source_pcd, target_pcd,
         source_fds, target_fds,
-        ransac_params, checkr_params
+        ransac_params, checkr_params,
+        matches=None
     ):
     # step5.1 Establish correspondences(point pairs) 建立 pairs
-    matches = init_matches(source_fds, target_fds) # 通过 fpfh 建立的feature squre map 建立最初的 pairs
+    if matches == None:
+        matches = init_matches(source_fds, target_fds) # 通过 fpfh 建立的feature squre map 建立最初的 pairs
 
     # build search tree on the target:
     search_tree_target = o3d.geometry.KDTreeFlann(target_pcd)

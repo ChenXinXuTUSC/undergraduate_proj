@@ -70,6 +70,10 @@ def iss_detect(points: np.ndarray, radius=0.25):
         "eigval_3": []  # 特征值3
     }
 
+    # move to center
+    points = copy.deepcopy(points)
+    points = points - points.mean(axis=0)
+
     # first construct a search tree
     search_tree = o3d.geometry.KDTreeFlann(npy2o3d(points))
     num_neighbors_cache = {}
@@ -135,11 +139,11 @@ def iss_detect(points: np.ndarray, radius=0.25):
     # 分布致密，类似于细椭球，就像标枪一样，类似于一条直线。
     # 而直线也不是一个好的特征。
 
-    # eigval3_threshold = np.median(keypoints["eigval_3"].values)
+    eigval3_threshold = np.median(keypoints["eigval_3"].values)
     keypoints = keypoints.loc[
         (keypoints["eigval_1"] / keypoints["eigval_2"] > 1.5) &
-        (keypoints["eigval_2"] / keypoints["eigval_3"] > 1.5),
-        # keypoints["eigval_3"] > eigval3_threshold,
+        (keypoints["eigval_2"] / keypoints["eigval_3"] > 1.5) &
+        keypoints["eigval_3"] > eigval3_threshold,
         keypoints.columns
     ]
 

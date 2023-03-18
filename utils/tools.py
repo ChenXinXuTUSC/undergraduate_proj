@@ -257,19 +257,19 @@ def solve_procrustes(P,Q):
     # 只使用xyz坐标进行普鲁克分析，以及闭式解的计算
     P = P[:, :3]
     Q = Q[:, :3]
+
     P_center = P.mean(axis=0)
     Q_center = Q.mean(axis=0)
-    Pu = P - P_center
-    Qu = Q - Q_center
+    Pu = P - P_center # P decentralized
+    Qu = Q - Q_center # Q decentralized
 
-    U, S, V = np.linalg.svd(np.dot(Qu.T, Pu), full_matrices=True, compute_uv=True)
+    U, S, V = np.linalg.svd(np.dot(Pu.T, Qu), full_matrices=True, compute_uv=True)
     R = np.dot(U, V)
     t = Q_center - np.dot(R, P_center)
 
     T = np.zeros((4, 4))
-    T[0:3, :3] = R
-    T[0:3, 3] = t
-    T[3, 3] = 1.0
+    T[:3, :3] = R
+    T[:3, 3] = t
     return T
 
 def apply_transformation(srcpts:np.ndarray, T:np.ndarray):

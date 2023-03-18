@@ -3,6 +3,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import numpy as np
 from tqdm import tqdm
+import copy
 
 import utils
 
@@ -65,13 +66,14 @@ class ModelNet40Dense(PairDataset):
         # add dummy rgb attributes, as point clouds
         # in ModelNet40 dataset don't have colors.
         points = np.concatenate((points[:,0:3], np.zeros((len(points), 3)), points[:,3:6]), axis=1)
-        points_aug = points.copy()
+        points_aug = copy.deepcopy(points)
 
+        T_gdth = np.eye(4)
         if self.augment:
-            T_gt = utils.build_random_transform(self.augdgre, self.augdist)
-            points_aug = utils.apply_transformation(points_aug, T_gt)
+            T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
+            points_aug = utils.apply_transformation(points_aug, T_gdth)
         
-        return points, points_aug, T_gt, sample_name
+        return points, points_aug, T_gdth, sample_name
 
     def __next__(self):
         self.iterate_pos += 1
@@ -124,11 +126,12 @@ class ThreeDMatchFCGF(PairDataset):
         frag1 = np.concatenate((frag1, np.zeros((len(frag1), 3))), axis=1)
         frag2 = np.concatenate((frag2, np.zeros((len(frag2), 3))), axis=1)
 
+        T_gdth = np.eye(4)
         if self.augment:
-            T_gt = utils.build_random_transform(self.augdgre, self.augdist)
-            frag2 = utils.apply_transformation(frag2, T_gt)
+            T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
+            frag2 = utils.apply_transformation(frag2, T_gdth)
 
-        return frag1, frag2, T_gt, sample_name
+        return frag1, frag2, T_gdth, sample_name
 
     def __next__(self):
         self.iterate_pos += 1

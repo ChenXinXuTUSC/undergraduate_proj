@@ -1,5 +1,6 @@
 import numpy as np
 import open3d as o3d
+from tqdm import tqdm
 import copy
 
 from . import colorlog
@@ -52,7 +53,7 @@ def ICP_exact_match(
             T = solve_procrustes(P, Q)
             curr_res = o3d.pipelines.registration.evaluate_registration(npy2o3d(srcpts), npy2o3d(dstpts), max_corresponding_dist, T)
             if early_terminate(curr_res, prev_res):
-                log_info("early stopping the RANSAC ICP procedure")
+                tqdm.write(log_info("early stopping the RANSAC ICP procedure", quiet=True))
                 break
     return curr_res
 
