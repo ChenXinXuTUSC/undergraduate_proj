@@ -5,29 +5,47 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "modelnet40",
+            "name": "ransac modelnet40",
             "type": "python",
             "request": "launch",
-            "program": "only_matches.py",
+            "program": "trivial_ransac.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--data_type", "ModelNet40Dense",
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
-                "--ICP_radius", "0.01"
+                "--ICP_radius", "0.01",
+                "--classes", "airplane guitar"
             ]
         },
         {
-            "name": "3DMatch-FCGF",
+            "name": "ransac 3DMatch",
             "type": "python",
             "request": "launch",
-            "program": "only_matches.py",
+            "program": "trivial_ransac.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--ICP_radius", "0.025"
+                "--ICP_radius", "0.025",
+                "--overlap_dn", "0.3",
+                "--overlap_up", "0.5",
+            ]
+        },
+        {
+            "name": "iss test",
+            "type": "python",
+            "request": "launch",
+            "program": "o3d_iss_test.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ThreeDMatchFCGF",
+                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--ICP_radius", "0.025",
+                "--overlap_dn", "0.3",
+                "--overlap_up", "0.5",
             ]
         }
     ]

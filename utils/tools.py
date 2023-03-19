@@ -207,6 +207,22 @@ def fuse2frags(
         ]
     ).write(os.path.join(out_dir, out_name))
 
+def fusexfrags(
+        points_list:list,
+        ply_vertex_type:np.dtype,
+        out_dir:str=".", out_name:str="out.ply"
+    ):
+    points_plyformat = []
+    for points in points_list:
+        for line in points:
+            points_plyformat.append(tuple(line))
+    points = np.array(points_plyformat, dtype=ply_vertex_type)
+    PlyData(
+        [
+            PlyElement.describe(points, "vertex", comments=["vertices"])
+        ]
+    ).write(os.path.join(out_dir, out_name))
+
 def fuse2frags_with_matches(
         points1:np.ndarray, 
         points2:np.ndarray, 
@@ -227,7 +243,7 @@ def fuse2frags_with_matches(
         [
             PlyElement.describe(points, "vertex", comments=["vertices"]),
             PlyElement.describe(edges, "edge", comments=["edges"])
-        ], text=True
+        ]
     ).write(os.path.join(out_dir, out_name))
 
 def solve_procrustes(P,Q):
@@ -327,9 +343,12 @@ def ground_truth_matches(matches:np.ndarray, pcd1, pcd2, radius:float, T:np.ndar
     pcd1 = copy.deepcopy(pcd1)
     pcd2 = copy.deepcopy(pcd2)
     if type(pcd1) == o3d.geometry.PointCloud:
-        pcd1 = o3d2npy(pcd1)[:, :3]
+        pcd1 = o3d2npy(pcd1)
     if type(pcd2) == o3d.geometry.PointCloud:
-        pcd2 = o3d2npy(pcd2)[:, :3]
+        pcd2 = o3d2npy(pcd2)
+    
+    pcd1 = pcd1[:, :3]
+    pcd2 = pcd2[:, :3]
 
     if T is not None:
         pcd1 = apply_transformation(pcd1, T)

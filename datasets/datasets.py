@@ -36,11 +36,18 @@ class ModelNet40Dense(PairDataset):
             shuffle: bool, 
             augment: bool, 
             augdgre: float, 
-            augdist: float
+            augdist: float,
+            args=None
         ) -> None:
         super().__init__(root, shuffle, augment, augdgre, augdist)
         self.files = []
+        self.classes = None
+
+        if args is not None:
+            self.classes = [cls.strip() for cls in args.classes.split()]
         mdirs = sorted([d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))])
+        if len(self.classes) > 0:
+            mdirs = [mdir for mdir in mdirs if mdir in self.classes]
         for mdir in tqdm(mdirs, total=len(mdirs), ncols=100, desc=self.__class__.__name__):
             plys = sorted([ply for ply in os.listdir(os.path.join(root, mdir)) if ply.endswith(".ply")])
             for ply in plys:
@@ -91,17 +98,27 @@ class ThreeDMatchFCGF(PairDataset):
             shuffle: bool, 
             augment: bool, 
             augdgre: float, 
-            augdist: float
+            augdist: float,
+            args=None
         ) -> None:
         super().__init__(root, shuffle, augment, augdgre, augdist)
         self.files = []
+        self.overlap_dn = 0.0
+        self.overlap_up = 1.0
+        
+        if args is not None:
+            self.overlap_dn = args.overlap_dn
+            self.overlap_up = args.overlap_up
         # npzs = [os.path.join(root, "npz", file) for file in sorted(os.listdir(os.path.join(root, "npz")))]
         txts = [os.path.join(self.root, "txt", file) for file in sorted(os.listdir(os.path.join(self.root, "txt")))]
         for txt in tqdm(txts, total=len(txts), ncols=100, desc=self.__class__.__name__):
             with open(os.path.join(self.root, "txt", txt), 'r') as f:
                 lines = f.readlines()
-                lines = [line.rstrip().split(' ') for line in lines]
+                lines = [line.strip().split(' ') for line in lines]
                 for line in lines:
+                    overlap_ratio = float(line[2])
+                    if overlap_ratio < self.overlap_dn or overlap_ratio > self.overlap_up:
+                        continue # only acquire ply pairs in valid overlap ratio range
                     self.files.append(
                         (
                             line[0].split('.')[0]+'@'+line[1].split('.')[0].split('@')[1]+'@'+line[2],

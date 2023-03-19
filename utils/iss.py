@@ -40,14 +40,12 @@ def iss_detect(points: np.ndarray, radius=0.25):
 
     params
     ----------
-    * point_cloud: numpy.ndarray
-    * search_scheme: KNN or RNN oct-tree search pattern
-    * r: radius used for RNN
-    * k: number of neighbours used for KNN
+    * points: numpy.ndarray
+    * radius: float, radius for ISS computing
 
     return
     ----------
-    * point_cloud: numpy.ndarray
+    * pd.DataFrame: map that stores keypoints' info
     '''
     # please figure out the difference between k nearest neighbour
     # search and radius search. In this ISS key  points  detection
@@ -60,6 +58,7 @@ def iss_detect(points: np.ndarray, radius=0.25):
     # 据某一列作为键值而对行进行排序，这样相关
     # 属性放在同一行就可以作为整体一起被移动到
     # 对应的顺位
+    points = copy.deepcopy(points[:,:3])
     keypoints = {
         "id": [],
         "x": [],
@@ -70,16 +69,12 @@ def iss_detect(points: np.ndarray, radius=0.25):
         "eigval_3": []  # 特征值3
     }
 
-    # move to center
-    points = copy.deepcopy(points)
-    points = points - points.mean(axis=0)
-
     # first construct a search tree
     search_tree = o3d.geometry.KDTreeFlann(npy2o3d(points))
     num_neighbors_cache = {}
     little_heap = []
     for center_idx, center in enumerate(points):
-        num_neighbors, neighbor_indicies, _ = search_tree.search_radius_vector_3d(center[:3], radius)
+        num_neighbors, neighbor_indicies, _ = search_tree.search_radius_vector_3d(center, radius)
         if num_neighbors < 6:
             continue # heuristic to filter outlier
         weights = []
@@ -88,10 +83,10 @@ def iss_detect(points: np.ndarray, radius=0.25):
         for neighbor_idx in neighbor_indicies[1:]:
             # check if in the cache
             if not neighbor_idx in num_neighbors_cache:
-                neigneig_num, _, _ = search_tree.search_radius_vector_3d(points[neighbor_idx, :3], radius)
+                neigneig_num, _, _ = search_tree.search_radius_vector_3d(points[neighbor_idx], radius)
                 num_neighbors_cache[neighbor_idx] = neigneig_num - 1 if neigneig_num > 1 else 1
             weights.append(1.0/num_neighbors_cache[neighbor_idx])
-            distans.append(points[neighbor_idx, :3] - center[:3])
+            distans.append(points[neighbor_idx] - center)
         weights = np.array(weights)
         distans = np.array(distans)
         # 这里的协方差矩阵指的是变量维度之间的协方差，不是样本之间的协方差
@@ -117,11 +112,11 @@ def iss_detect(points: np.ndarray, radius=0.25):
     while little_heap:
         _, top_idx = heapq.heappop(little_heap)
         if not top_idx in suppressed_points_indicies:
-            _, top_neighbors_indices, _ = search_tree.search_radius_vector_3d(points[top_idx, :3], radius)
+            _, top_neighbors_indices, _ = search_tree.search_radius_vector_3d(points[top_idx], radius)
             for idx in top_neighbors_indices[1:]:
                 suppressed_points_indicies.add(idx)
     
-    # 格式化为data frame好进行整体关联操作
+    # 格式化为DataFrame好进行整体关联操作
     keypoints = pd.DataFrame.from_dict(keypoints)
     keypoints = keypoints.loc[
         keypoints["id"].apply(lambda idx: not idx in suppressed_points_indicies),
@@ -157,17 +152,12 @@ def iss_detect_copy(pcd: o3d.geometry.PointCloud, radius: float):
 
     Parameters
     ----------
-    point_cloud: Open3D.geometry.PointCloud
-        input point cloud
-    search_tree: Open3D.geometry.KDTree
-        point cloud search tree
-    radius: float
-        radius for ISS computing
+    * pcd: Open3D.geometry.PointCloud
+    * radius: float, radius for ISS computing
 
     Returns
     ----------
-    point_cloud: numpy.ndarray
-        Velodyne measurements as N-by-3 numpy ndarray
+    * pd.DataFrame: map that stores keypoints' info
     '''
 
     # points handler:
@@ -188,11 +178,9 @@ def iss_detect_copy(pcd: o3d.geometry.PointCloud, radius: float):
     num_rnn_cache = {}
     # heapq for non-maximum suppression:
     pq = []
-    for idx_center, center in enumerate(
-        points
-    ):
+    for idx_center, center in enumerate(points):
         # find radius nearest neighbors:
-        [k, idx_neighbors, _] = search_tree.search_radius_vector_3d(center, radius)
+        k, idx_neighbors, _ = search_tree.search_radius_vector_3d(center, radius)
 
         # use the heuristics from NDT to filter outliers:
         if k < 6:

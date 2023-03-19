@@ -124,9 +124,9 @@ def ransac_match(
     t1 = time.time()
     for T in map(validator, proposal_generator):
         if T is not None:
-            log_dbug(f"initial transformation found:\n{T}")
+            # log_dbug(f"initial transformation found:\n{T}")
             tmp_R = T[:3, :3]
-            log_dbug(f"validate if R is  orthogonal:\n{np.dot(tmp_R, tmp_R.T)}")
+            # log_dbug(f"validate if R is  orthogonal:\n{np.dot(tmp_R, tmp_R.T)}")
             break
     t2 = time.time()
     log_info(f"finding initial T costs {t2-t1:.2f}s")
@@ -154,7 +154,7 @@ def ransac_match(
         
         if num_validation == ransac_params.max_valid_num:
             break
-    log_info(f"ICP refinement: {best_res}")
+
     return best_res
 
 
