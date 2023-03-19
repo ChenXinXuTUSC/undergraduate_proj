@@ -45,7 +45,7 @@ if __name__ == "__main__":
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args["data_type"]](
         root=args["data_root"],
-        shuffle=False,
+        shuffle=True,
         augment=True,
         augdgre=30.0,
         augdist=4.0
@@ -83,15 +83,6 @@ if __name__ == "__main__":
         # only select key points' fpfh
         keyfpfhs1 = fpfhs1[:, keyptsdict1["id"].values]
         keyfpfhs2 = fpfhs2[:, keyptsdict2["id"].values]
-        # use fpfh feature descriptor to compute matches
-        matches = ransac.init_matches(keyfpfhs1, keyfpfhs2)
-        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args["ICP_radius"], T_gdth) # 上帝视角
-        utils.log_info("gdth matches:", correct.astype(np.int32).sum())
-        # matches = utils.filter_matches(matches, keyfpfhs1, keyfpfhs2)
-        # utils.log_info("fltr matches:", len(matches))
-        # 将对匹配对索引从关键点集合映射回原点云集合
-        gdth_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T[correct]
-
 
         # step4: ransac initial registration
         initial_ransac = utils.ransac_match(
@@ -100,7 +91,7 @@ if __name__ == "__main__":
             ransac_params=RANSACCONF(
                 max_workers=4, num_samples=4,
                 max_corresponding_dist=args["ICP_radius"]*2.0,
-                max_iter_num=20000, max_valid_num=100, max_refine_num=30
+                max_iter_num=2000, max_valid_num=100, max_refine_num=30
             ),
             checkr_params=CHECKRCONF(
                 max_corresponding_dist=args["ICP_radius"]*2.0,
@@ -108,9 +99,6 @@ if __name__ == "__main__":
                 normal_angle_threshold=None
             )
         )
-
-        utils.log_dbug(utils.resolve_axis_angle(initial_ransac.transformation, deg=True))
-        utils.log_dbug(utils.resolve_axis_angle(T_gdth, deg=True))
 
         if len(initial_ransac.correspondence_set) == 0:
             utils.log_warn(sample_name, "failed to recover the transformation")
@@ -124,14 +112,12 @@ if __name__ == "__main__":
         )
 
         T_pred = final_result.transformation
-        utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
-        utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
+        # utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
+        # utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
 
         points1 = utils.apply_transformation(points1, T_pred)
 
         # output to file
-        out_dir  = "./samples/matches_sample"
-        out_name = sample_name + ".ply"
         points1[:, 6:9] = np.asarray(points1_o3d.normals)
         points2[:, 6:9] = np.asarray(points2_o3d.normals)
         points1[:, 3:6] = np.array([200, 200, 0], dtype=np.int32)
@@ -139,7 +125,15 @@ if __name__ == "__main__":
         # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
         points1[keyptsdict1["id"].values, 3:6] = np.array([255, 0, 0])
         points2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
-        # uncomment the following when need to debug through visualization
+        # use fpfh feature descriptor to compute matches
+        matches = ransac.init_matches(keyfpfhs1, keyfpfhs2)
+        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args["ICP_radius"], T_gdth) # 上帝视角
+        utils.log_info("gdth matches:", correct.astype(np.int32).sum())
+        # 将对匹配对索引从关键点集合映射回原点云集合
+        gdth_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T[correct]
+
+        out_dir  = "./samples/matches_sample"
+        out_name = sample_name + ".ply"
         utils.fuse2frags_with_matches(points1, points2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, out_name)
         utils.log_info(f"finish processing {out_name}")
         break # only for test
