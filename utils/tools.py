@@ -265,9 +265,10 @@ def solve_procrustes(P,Q):
 
     U, S, V = np.linalg.svd(np.dot(Pu.T, Qu), full_matrices=True, compute_uv=True)
     R = np.dot(U, V)
-    t = Q_center - np.dot(R, P_center)
+    # t = Q_center - np.dot(P_center, R)
+    t = Q_center - P_center @ R
 
-    T = np.zeros((4, 4))
+    T = np.eye(4)
     T[:3, :3] = R
     T[:3, 3] = t
     return T

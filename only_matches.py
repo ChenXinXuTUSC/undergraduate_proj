@@ -93,47 +93,42 @@ if __name__ == "__main__":
         gdth_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T[correct]
 
 
-        # # step4: ransac initial registration
-        # initial_ransac = utils.ransac_match(
-        #     keypts1, keypts2,
-        #     keyfpfhs1,   keyfpfhs2,
-        #     ransac_params=RANSACCONF(
-        #         max_workers=4, num_samples=4,
-        #         max_corresponding_dist=args["ICP_radius"]*1.5,
-        #         max_iter_num=20000, max_valid_num=500, max_refine_num=30
-        #     ),
-        #     checkr_params=CHECKRCONF(
-        #         max_corresponding_dist=args["ICP_radius"]*1.5,
-        #         max_mnn_dist_ratio=0.80,
-        #         normal_angle_threshold=None
-        #     ),
-        #     matches=matches[correct]
-        # )
+        # step4: ransac initial registration
+        initial_ransac = utils.ransac_match(
+            keypts1, keypts2,
+            keyfpfhs1, keyfpfhs2,
+            ransac_params=RANSACCONF(
+                max_workers=4, num_samples=4,
+                max_corresponding_dist=args["ICP_radius"]*2.0,
+                max_iter_num=20000, max_valid_num=100, max_refine_num=30
+            ),
+            checkr_params=CHECKRCONF(
+                max_corresponding_dist=args["ICP_radius"]*2.0,
+                max_mnn_dist_ratio=0.80,
+                normal_angle_threshold=None
+            )
+        )
 
-        # utils.log_dbug(utils.resolve_axis_angle(initial_ransac.transformation, deg=True))
-        # utils.log_dbug(utils.resolve_axis_angle(T_gdth, deg=True))
+        utils.log_dbug(utils.resolve_axis_angle(initial_ransac.transformation, deg=True))
+        utils.log_dbug(utils.resolve_axis_angle(T_gdth, deg=True))
 
-        # if len(initial_ransac.correspondence_set) == 0:
-        #     utils.log_warn(sample_name, "failed to recover the transformation")
-        #     continue
+        if len(initial_ransac.correspondence_set) == 0:
+            utils.log_warn(sample_name, "failed to recover the transformation")
+            continue
         
-        # search_tree_points2 = o3d.geometry.KDTreeFlann(points2_o3d)
-        # final_result = icp.ICP_exact_match_copy(
-        #     points1_o3d, points2_o3d, search_tree_points2, 
-        #     initial_ransac.transformation, args["ICP_radius"]*1.0,
-        #     1000
-        # )
+        search_tree_points2 = o3d.geometry.KDTreeFlann(points2_o3d)
+        final_result = icp.ICP_exact_match(
+            points1, points2, search_tree_points2, 
+            initial_ransac.transformation, args["ICP_radius"],
+            100
+        )
 
-        # T_pred = final_result.transformation
-        # utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True))
-        # utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True))
-
-        # points1 = utils.apply_transformation(points1, T_pred)
-
-        T_pred = utils.solve_procrustes(keypts1[matches[correct][:, 0]], keypts2[matches[correct][:, 1]])
-        points1 = utils.apply_transformation(points1, T_pred)
+        T_pred = final_result.transformation
         utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
+
+        points1 = utils.apply_transformation(points1, T_pred)
+
         # output to file
         out_dir  = "./samples/matches_sample"
         out_name = sample_name + ".ply"

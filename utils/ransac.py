@@ -1,13 +1,11 @@
 import numpy as np
 import open3d as o3d
+import time
+from tqdm import tqdm
 
-import concurrent.futures
 from scipy.spatial.distance import pdist
 
-from tqdm import tqdm
-import time
 
-from . import tools
 from .tools import *
 from . import icp
 
@@ -74,8 +72,9 @@ def one_iter_match(
         return None
     
     T = solve_procrustes(srckts, dstkts)
-    R, t = T[0:3, 0:3], T[0:3, 3]
-    log_dbug(resolve_axis_angle(T, deg=True))
+    R = T[:3,:3]
+    t = T[:3, 3]
+
     # deviation to judge outlier and inlier
     deviation = np.linalg.norm(dstkts - np.dot(srckts, R) - t, axis=1)
     is_valid_deviation_match = np.all(deviation <= checkr_params.max_corresponding_dist)
@@ -91,7 +90,8 @@ def ransac_match(
         dstfds: np.ndarray,
         ransac_params,
         checkr_params,
-        matches=None
+        matches=None,
+        T_gdth=None
     ):
     '''
     params
@@ -129,9 +129,9 @@ def ransac_match(
             log_dbug(f"validate if R is  orthogonal:\n{np.dot(tmp_R, tmp_R.T)}")
             break
     t2 = time.time()
-    log_info(f"finding proper T costs {t2-t1:.2f}s")
+    log_info(f"finding initial T costs {t2-t1:.2f}s")
     initial_T = T
-    
+
     # baseline
     best_res = icp.ICP_exact_match(
         srckts, dstkts, dst_search_tree,
@@ -148,7 +148,7 @@ def ransac_match(
                 T,
                 ransac_params.max_corresponding_dist, ransac_params.max_refine_num
             )
-            if curr_res.fitness < best_res.fitness:
+            if curr_res.fitness > best_res.fitness:
                 best_res = curr_res
             num_validation += 1
         

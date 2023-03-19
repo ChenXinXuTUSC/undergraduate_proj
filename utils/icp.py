@@ -9,7 +9,7 @@ from . import tools
 from .tools import *
 
 def early_terminate(curr_res, prev_res):
-    relative_fitness_gain = curr_res.fitness / prev_res.fitness - 1.0
+    relative_fitness_gain = (curr_res.fitness+1.0) / (prev_res.fitness+1.0) - 1.0
     return relative_fitness_gain < 1e-2
 
 def ICP_exact_match(
@@ -19,8 +19,8 @@ def ICP_exact_match(
         max_corresponding_dist, max_iter_num
     ):
     # in case that point line contains features other than xyz coordinate
-    srcpts = srcpts[:, :3]
-    dstpts = dstpts[:, :3]
+    srcpts = copy.deepcopy(srcpts[:, :3])
+    dstpts = copy.deepcopy(dstpts[:, :3])
 
     # the class <evaluate_registration> has property <correspondence set>
     # that is an nx2 numpy int-type ndarray, it stores the corresponding
@@ -48,7 +48,7 @@ def ICP_exact_match(
 
         # ICP
         if len(matches) >= 4:
-            P = pts_transed[matches[:, 0]]
+            P = srcpts[matches[:, 0]]
             Q = dstpts[matches[:, 1]]
             T = solve_procrustes(P, Q)
             curr_res = o3d.pipelines.registration.evaluate_registration(npy2o3d(srcpts), npy2o3d(dstpts), max_corresponding_dist, T)
