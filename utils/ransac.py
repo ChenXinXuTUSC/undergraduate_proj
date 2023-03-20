@@ -28,10 +28,11 @@ def init_matches(srcfds:np.ndarray, dstfds:np.ndarray):
     return np.asarray(rough_matches)
 
 def filter_matches(matches:np.ndarray, keyfpfhs1:np.ndarray, keyfpfhs2:np.ndarray):
+    matches = copy.deepcopy(matches)
     avg_fdist = np.sqrt(((keyfpfhs1[:, matches[:, 0]] - keyfpfhs2[:, matches[:, 1]]) ** 2).sum(axis=1)) / len(matches)
     avg_fdist = np.reshape(avg_fdist, (len(avg_fdist), 1))
     all_fdist = np.sqrt(((keyfpfhs1[:, matches[:, 0]] - keyfpfhs2[:, matches[:, 1]]) ** 2))
-    valid_mask = (all_fdist < avg_fdist).astype(np.int32).sum(axis=0) > 20
+    valid_mask = (all_fdist < avg_fdist).astype(np.int32).sum(axis=0) > 10
     return matches[valid_mask]
 
 def one_iter_match(
@@ -51,7 +52,7 @@ def one_iter_match(
         # np.dot是矩阵乘法，*是对应元素乘法
         match_cosine = (src_normals * dst_normals).sum(axis=1)
         # 如果每对匹配特征点的法向量夹角都符合阈值，则匹配通过
-        is_valid_normal_match = np.all(match_cosine, checkr_params.normal_angle_threshold)
+        is_valid_normal_match = np.all(match_cosine >= checkr_params.normal_angle_threshold)
         if not is_valid_normal_match:
             return None
     

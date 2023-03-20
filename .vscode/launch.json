@@ -8,7 +8,7 @@
             "name": "ransac modelnet40",
             "type": "python",
             "request": "launch",
-            "program": "trivial_ransac.py",
+            "program": "ransac_modelnet40.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -22,7 +22,7 @@
             "name": "ransac 3DMatch",
             "type": "python",
             "request": "launch",
-            "program": "trivial_ransac.py",
+            "program": "ransac_3DMatch.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -43,10 +43,27 @@
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--ICP_radius", "0.025",
+                "--ICP_radius", "0.020",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
             ]
-        }
+        },
+        {
+            "name": "ransac ME 3DMatch",
+            "type": "python",
+            "request": "launch",
+            "program": "ransac_ME.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ThreeDMatchFCGF",
+                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--ICP_radius", "0.025",
+                "--overlap_dn", "0.3",
+                "--overlap_up", "0.5",
+                "--feat_model", "ResUNetBN2C",
+                "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
+            ]
+        },
     ]
 }

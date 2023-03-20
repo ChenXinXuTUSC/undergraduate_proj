@@ -11,4 +11,8 @@ parser.add_argument("--classes", type=str, help="model classes seperated by spac
 # 3DMatch
 parser.add_argument("--overlap_up", type=float, help="upper threshold of overlap ratio of the sample pair")
 parser.add_argument("--overlap_dn", type=float, help="lower thresholf of overlap ratio of the sample pair")
+
+# MinkowskiEngine test
+parser.add_argument("--feat_model", type=str, help="class name of feature extraction model")
+parser.add_argument("--state_dict", type=str, help="path to the model state dict")
 args = parser.parse_args()
