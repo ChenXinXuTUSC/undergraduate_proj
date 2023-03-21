@@ -2,10 +2,9 @@ import heapq
 import numpy as np
 import pandas as pd
 import open3d as o3d
+import torch
 
-from . import colorlog
 from .colorlog import *
-from . import tools
 from .tools import *
 
 
@@ -31,7 +30,7 @@ def radius_outlier_filter(points:np.ndarray, radius:float, must_neighbors:int):
             pts_idx_after.append(i)
     return points[pts_idx_after]
 
-def iss_detect(points: np.ndarray, radius=0.25):
+def iss_detect(points:np.ndarray, radius=0.25):
     '''
     Detect point cloud key points using Intrinsic Shape Signature(ISS)\n
     ISS角点检测原论文要求使用RNN进行球形领域搜索，所以就不提供KNN的选项了\n
@@ -59,6 +58,8 @@ def iss_detect(points: np.ndarray, radius=0.25):
     # 属性放在同一行就可以作为整体一起被移动到
     # 对应的顺位
     points = copy.deepcopy(points[:,:3])
+    if type(points) == torch.Tensor:
+        points = points.numpy()
     keypoints = {
         "id": [],
         "x": [],

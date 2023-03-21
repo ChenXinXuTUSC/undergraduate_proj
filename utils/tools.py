@@ -1,7 +1,6 @@
 import os
 import copy
 import numpy as np
-import pandas as pd
 from plyfile import PlyData, PlyElement
 import open3d as o3d
 
@@ -290,7 +289,11 @@ def solve_procrustes(P,Q):
     return T
 
 def apply_transformation(srcpts:np.ndarray, T:np.ndarray):
+    import torch
+
     srcpts = copy.deepcopy(srcpts)
+    if type(srcpts) == torch.Tensor:
+        srcpts = srcpts.detach().numpy()
     if T.shape != (4, 4):
         log_warn("invalid transformation matrix")
         return srcpts
@@ -340,12 +343,18 @@ def ground_truth_matches(matches:np.ndarray, pcd1, pcd2, radius:float, T:np.ndar
     ----------
     * is_correct: 1XN boolean np.ndarray that indicates inlier matches
     '''
+    import torch
     pcd1 = copy.deepcopy(pcd1)
     pcd2 = copy.deepcopy(pcd2)
     if type(pcd1) == o3d.geometry.PointCloud:
         pcd1 = o3d2npy(pcd1)
     if type(pcd2) == o3d.geometry.PointCloud:
         pcd2 = o3d2npy(pcd2)
+
+    if type(pcd1) == torch.Tensor:
+        pcd1 = pcd1.detach().numpy()
+    if type(pcd2) == torch.Tensor:
+        pcd2 = pcd2.detach().numpy()
     
     pcd1 = pcd1[:, :3]
     pcd2 = pcd2[:, :3]

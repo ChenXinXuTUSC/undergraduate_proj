@@ -60,8 +60,8 @@ if __name__ == "__main__":
         points2 = utils.voxel_down_sample(points2, args.ICP_radius)
 
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(points1, args.ICP_radius * 1.5)
-        keyptsdict2 = utils.iss_detect(points2, args.ICP_radius * 1.5)
+        keyptsdict1 = utils.iss_detect(points1, args.ICP_radius * 1.25)
+        keyptsdict2 = utils.iss_detect(points2, args.ICP_radius * 1.25)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue

@@ -44,7 +44,7 @@ CHECKRCONF = collections.namedtuple(
     ]
 )
 
-
+@torch.no_grad()
 def preprocess(points:np.ndarray, voxel_size:float):
     voxcoords, voxidxs = ME.utils.sparse_quantize(
         coordinates=points[:,:3], 
@@ -53,7 +53,7 @@ def preprocess(points:np.ndarray, voxel_size:float):
     )
     voxcoords = ME.utils.batched_coordinates([voxcoords])
     feats = torch.ones(len(voxidxs), 1)
-    return torch.from_numpy(points[voxidxs, :3]).float(), voxcoords, voxidxs, feats
+    return points[voxidxs], voxcoords, voxidxs, feats
 
 
 if __name__ == "__main__":
@@ -88,9 +88,12 @@ if __name__ == "__main__":
         xyzs1, voxcoords1, voxidxs1, feats1 = preprocess(points1, args.ICP_radius)
         xyzs2, voxcoords2, voxidxs2, feats2 = preprocess(points2, args.ICP_radius)
 
+        xyzs1_o3d = utils.npy2o3d(xyzs1)
+        xyzs2_o3d = utils.npy2o3d(xyzs2)
+
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(xyzs1, args.ICP_radius)
-        keyptsdict2 = utils.iss_detect(xyzs2, args.ICP_radius)
+        keyptsdict1 = utils.iss_detect(xyzs1, args.ICP_radius*1.10)
+        keyptsdict2 = utils.iss_detect(xyzs2, args.ICP_radius*1.10)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
@@ -99,16 +102,19 @@ if __name__ == "__main__":
 
         # step3: compute FCGF for each key point
         # compute all points' fcgf
-        fcgfs1 = feat_model(ME.SparseTensor(coordinates=voxcoords1, features=feats1)).F
-        fcgfs2 = feat_model(ME.SparseTensor(coordinates=voxcoords2, features=feats2)).F
+        fcgfs1 = feat_model(ME.SparseTensor(coordinates=voxcoords1, features=feats1)).F.detach().numpy()
+        fcgfs2 = feat_model(ME.SparseTensor(coordinates=voxcoords2, features=feats2)).F.detach().numpy()
         # only select key points' fcgf
-        keyfcgfs1 = fcgfs1[keyptsdict1["id"].values]
-        keyfcgfs2 = fcgfs1[keyptsdict2["id"].values]
+        keyfcgfs1 = fcgfs1[keyptsdict1["id"].values].T
+        keyfcgfs2 = fcgfs2[keyptsdict2["id"].values].T
 
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfcgfs1, keyfcgfs2)
         correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.ICP_radius * 2.5, T_gdth) # 上帝视角
-        utils.log_info("gdth matches:", correct.astype(np.int32).sum())
+        correct_valid_num = correct.astype(np.int32).sum()
+        correct_total_num = correct.shape[0]
+        utils.log_info(f"gdth/init: {correct_valid_num:.2f}/{correct_total_num:.2f}={correct_valid_num/correct_total_num:.2f}")
+
         # 将对匹配对索引从关键点集合映射回原点云集合
         init_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T
         gdth_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T[correct]
@@ -124,17 +130,18 @@ if __name__ == "__main__":
             ),
             checkr_params=CHECKRCONF(
                 max_corresponding_dist=args.ICP_radius*2.5,
-                max_mnn_dist_ratio=0.50,
+                max_mnn_dist_ratio=0.85,
                 normal_angle_threshold=None
-            ),
-            matches=matches
+            )
         )
 
         if len(initial_ransac.correspondence_set) == 0:
             utils.log_warn(sample_name, "failed to recover the transformation")
             continue
+        else:
+            utils.log_info("correspondence set num:", len(initial_ransac.correspondence_set))
         
-        search_tree_points2 = o3d.geometry.KDTreeFlann(xyzs2)
+        search_tree_points2 = o3d.geometry.KDTreeFlann(xyzs2_o3d)
         final_result = icp.ICP_exact_match(
             xyzs1, xyzs2, search_tree_points2, 
             initial_ransac.transformation, args.ICP_radius,
@@ -146,19 +153,39 @@ if __name__ == "__main__":
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
         xyzs1 = utils.apply_transformation(xyzs1, T_pred)
 
-        # output to file
-        xyzs1_o3d = o3d.geometry.PointCloud()
-        xyzs1_o3d.points = o3d.utility.Vector3dVector(xyzs1)
-        xyzs2_o3d = o3d.geometry.PointCloud()
-        xyzs2_o3d.points = o3d.utility.Vector3dVector(xyzs2)
-        
         # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
-        points1[keyptsdict1["id"].values, 3:6] = np.array([255, 0, 0])
-        points2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
+        xyzs1[keyptsdict1["id"].values, 3:6] = np.array([255, 0, 0])
+        xyzs2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
 
-        out_dir  = "./samples/matches_sample"
-        utils.fuse2frags_with_matches(points1, points2, init_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "init_matches.ply")
-        utils.fuse2frags_with_matches(points1, points2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "gdth_matches.ply")
+        # output to file
+        out_dir  = "./samples/me_matches_sample"
+        utils.fuse2frags_with_matches(xyzs1, xyzs2, init_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "init_matches.ply")
+        utils.fuse2frags_with_matches(xyzs1, xyzs2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "gdth_matches.ply")
+        points1_o3d = utils.npy2o3d(points1)
+        points2_o3d = utils.npy2o3d(points2)
+        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
+        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
+        utils.fuse2frags(
+            utils.apply_transformation(utils.o3d2npy(points1_o3d), T_pred),
+            utils.o3d2npy(points2_o3d), 
+            utils.ply_vertex_type, out_dir, "original_color.ply"
+        )
+        points1_o3d.paint_uniform_color([1.0, 1.0, 0.0])
+        points2_o3d.paint_uniform_color([0.0, 1.0, 1.0])
+        points1 = utils.o3d2npy(points1_o3d)
+        points2 = utils.o3d2npy(points2_o3d)
+        points1[:,3:6] = points1[:,3:6] * 255.0
+        points2[:,3:6] = points2[:,3:6] * 255.0
+        utils.fuse2frags(
+            utils.apply_transformation(points1, T_pred),
+            points2, 
+            utils.ply_vertex_type, out_dir, "pred.ply"
+        )
+        utils.fuse2frags(
+            utils.apply_transformation(points1, T_gdth),
+            points2, 
+            utils.ply_vertex_type, out_dir, "gdth.ply"
+        )
         utils.log_info(f"finish processing {sample_name}")
         break # only for test
 

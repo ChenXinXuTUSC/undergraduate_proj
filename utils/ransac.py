@@ -3,6 +3,7 @@ import open3d as o3d
 import time
 from tqdm import tqdm
 
+import torch
 from scipy.spatial.distance import pdist
 
 
@@ -13,6 +14,10 @@ def init_matches(srcfds:np.ndarray, dstfds:np.ndarray):
     '''
     the function assumes that points2 is target points
     '''
+    if type(srcfds) == torch.Tensor:
+        srcfds = srcfds.detach().numpy()
+    if type(dstfds) == torch.Tensor:
+        dstfds = dstfds.detach().numpy()
     fpfh_search_tree = o3d.geometry.KDTreeFlann(dstfds)
     num_srcfds = srcfds.shape[1]
     rough_matches = []

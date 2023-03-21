@@ -1,11 +1,10 @@
+import torch
 import numpy as np
 import open3d as o3d
 from tqdm import tqdm
 import copy
 
-from . import colorlog
 from .colorlog import *
-from . import tools
 from .tools import *
 
 def early_terminate(curr_res, prev_res):
@@ -18,6 +17,10 @@ def ICP_exact_match(
         T: np.ndarray,
         max_corresponding_dist, max_iter_num
     ):
+    if type(srcpts) == torch.Tensor:
+        srcpts = srcpts.detach().numpy()
+    if type(dstpts) == torch.Tensor:
+        dstpts = dstpts.detach().numpy()
     # in case that point line contains features other than xyz coordinate
     srcpts = copy.deepcopy(srcpts[:, :3])
     dstpts = copy.deepcopy(dstpts[:, :3])
