@@ -4,5 +4,7 @@
 *.a
 *.so
 *.lib
-.vscode/
+/out
+/runs
+/results
 __pycache__/

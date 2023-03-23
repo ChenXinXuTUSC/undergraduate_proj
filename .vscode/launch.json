@@ -5,32 +5,84 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "ransac modelnet40",
+            "name": "当前文件",
             "type": "python",
             "request": "launch",
-            "program": "ransac_modelnet40.py",
+            "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--data_type", "ModelNet40Dense",
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--ICP_radius", "0.01",
+                "--classes", "airplane guitar flower_pot"
+            ]
+        },
+        {
+            "name": "ISS modelnet40",
+            "type": "python",
+            "request": "launch",
+            "program": "iss_modelnet40.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--out_root", "${workspaceFolder}/results/iss_modelnet40",
+                "--ICP_radius", "0.01",
                 "--classes", "airplane guitar"
             ]
         },
         {
-            "name": "ransac 3DMatch",
+            "name": "ISS 3DMatch",
             "type": "python",
             "request": "launch",
-            "program": "ransac_3DMatch.py",
+            "program": "iss_3DMatch.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--out_root", "${workspaceFolder}/results/iss_3dmatch",
                 "--ICP_radius", "0.025",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
+            ]
+        },
+        {
+            "name": "ISS KITTIOdo",
+            "type": "python",
+            "request": "launch",
+            "program": "iss_kittiodo.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "KITTIOdometry",
+                "--data_root", "/home/hm/fuguiduo/datasets/KITTI/odometry/dataset/sequences/00",
+                "--out_root", "${workspaceFolder}/results/iss_kittiodo",
+                "--step_size", "5",
+                "--ICP_radius", "0.05",
+                "--voxel_size", "0.05",
+                "--filter_radius", "0.20",
+                "--filter_mustnn", "10"
+            ]
+        },
+        {
+            "name": "FCGF 3DMatch",
+            "type": "python",
+            "request": "launch",
+            "program": "fcgf_3DMatch.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ThreeDMatchFCGF",
+                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--out_root", "${workspaceFolder}/results/fcgf_3dmatch",
+                "--ICP_radius", "0.025",
+                "--overlap_dn", "0.3",
+                "--overlap_up", "0.5",
+                "--feat_model", "ResUNetBN2C",
+                "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
             ]
         },
         {
@@ -47,23 +99,6 @@
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
             ]
-        },
-        {
-            "name": "ransac ME 3DMatch",
-            "type": "python",
-            "request": "launch",
-            "program": "ransac_ME.py",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "args": [
-                "--data_type", "ThreeDMatchFCGF",
-                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--ICP_radius", "0.025",
-                "--overlap_dn", "0.3",
-                "--overlap_up", "0.5",
-                "--feat_model", "ResUNetBN2C",
-                "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
-            ]
-        },
+        }
     ]
 }

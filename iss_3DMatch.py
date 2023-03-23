@@ -136,9 +136,8 @@ if __name__ == "__main__":
         points1[keyptsdict1["id"].values, 3:6] = np.array([255, 0, 0])
         points2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
 
-        out_dir  = "./samples/matches_sample"
-        utils.fuse2frags_with_matches(points1, points2, init_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "init_matches.ply")
-        utils.fuse2frags_with_matches(points1, points2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "gdth_matches.ply")
+        utils.fuse2frags_with_matches(points1, points2, init_matches, utils.ply_vertex_type, utils.ply_edge_type, args.out_root, "init_matches.ply")
+        utils.fuse2frags_with_matches(points1, points2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, args.out_root, "gdth_matches.ply")
         utils.log_info(f"finish processing {sample_name}")
         break # only for test
 

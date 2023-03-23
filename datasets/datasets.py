@@ -1,11 +1,12 @@
 import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from os import path as osp
 import numpy as np
 from tqdm import tqdm
 import copy
 
 import utils
+
+import cv2
 
 class PairDataset:
     '''
@@ -158,3 +159,135 @@ class ThreeDMatchFCGF(PairDataset):
 
     def __iter__(self):
         return self
+
+class KITTIOdometry(PairDataset):
+    def __init__(
+            self, 
+            root: str, 
+            shuffle: bool, 
+            augment: bool, 
+            augdgre: float, 
+            augdist: float,
+            args=None
+        ) -> None:
+        super().__init__(root, shuffle, augment, augdgre, augdist)
+
+        self.voxel_size = args.voxel_size
+        self.filter_radius = args.filter_radius
+        self.filter_mustnn = args.filter_mustnn
+
+        self.step_size = args.step_size
+        if self.step_size > 10:
+            raise Exception("step size exceeds limitation 10")
+        
+        self.img_ids = [item[:-4] for item in sorted(os.listdir(f"{self.root}/image_0"))][::self.step_size]
+        with open(f"{self.root}/poses.txt", 'r') as f:
+            self.pos_lns = f.readlines()
+
+        self.stereo_sgbm = cv2.StereoSGBM_create(
+            0,          # minDisparity 最小可能差异值。通常情况下它是0
+            96,         # numDisparities 最大差异减去最小差异。该值总是大于零。在当前的实现中，该参数必须可以被16整除
+            9,          # BLOCKSIZE 匹配的块大小。它必须是> = 1的奇数。通常情况下，它应该在3..11的范围内
+            # 该算法需要P2>P1。请参见stereo_match.cpp示例，其中显示了一些相当好的P1和P2值（分别为8 * number_of_image_channels * SADWindowSize * SADWindowSize和32 * number_of_image_channels * SADWindowSize * SADWindowSize）
+            8 * 9 * 9,  # P1 控制视差平滑度的第一个参数
+            32 * 9 * 9, # P2 第二个参数控制视差平滑度。值越大，差异越平滑。P1是相邻像素之间的视差变化加或减1的惩罚。P2是相邻像素之间的视差变化超过1的惩罚
+            1, 
+            63, 
+            10, 
+            100, 
+            32
+        )
+
+        with open(f"{self.root}/calib.txt", 'r') as f:
+                lines = f.readlines()
+                # we only use P0 and P1, two gray image camera
+                intrinsics_P0 = [float(str_val) for str_val in lines[0].rstrip().split(' ')[1:]] 
+                intrinsics_P1 = [float(str_val) for str_val in lines[1].rstrip().split(' ')[1:]]
+        self.fx =  intrinsics_P0[0]
+        self.fy =  intrinsics_P0[5]
+        self.cx =  intrinsics_P0[2]
+        self.cy =  intrinsics_P0[6]
+        self.bs = -intrinsics_P1[3] / self.fx
+
+        self.iterate_pos = -1
+
+    def __len__(self):
+        return len(self.image_ids)
+
+    def __getitem__(self, idx):
+        if idx == len(self.img_ids) - 1:
+            idx -= 1 # in case the last frame is chosen
+        frag1, T1 = self.png2npy_onthefly(idx)
+        frag2, T2 = self.png2npy_onthefly(idx + 1)
+
+        T_gdth = np.eye(4)
+        if self.augment:
+            T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
+            frag2 = utils.apply_transformation(frag2, T_gdth)
+        
+        sample_name = self.img_ids[idx] + "@" + self.img_idx[idx + 1]
+        return frag1, frag2, T_gdth, sample_name
+
+    def __next__(self):
+        self.iterate_pos += 1
+        if self.iterate_pos >= len(self.img_ids):
+            raise StopIteration
+        return self[self.iterate_pos]
+
+    def __iter__(self):
+        return self
+
+    def png2npy_onthefly(self, idx):
+        import open3d as o3d
+
+        left_gray_img = cv2.imread(f"{self.root}/image_0/{self.img_ids[idx]}.png", 0) # 0-255 np.ndarray
+        righ_gray_img = cv2.imread(f"{self.root}/image_1/{self.img_ids[idx]}.png", 0) # 0-255 np.ndarray
+        disparity = self.stereo_sgbm.compute(
+            left_gray_img,
+            righ_gray_img
+        ).astype(np.float32) / 16.0
+        
+        points_list = []
+        ROWS, COLS = left_gray_img.shape
+        for i in range(ROWS):
+            for j in range(COLS):
+                if disparity[i, j] < 10.0 or disparity[i, j] > 64.0:
+                    continue
+                # x, y, z in original space
+                depth = self.fx * self.bs / disparity[i, j]
+                points_list.append([
+                    (j - self.cx) / self.fx * depth,
+                    (i - self.cy) / self.fy * depth,
+                    depth, 
+                    left_gray_img[i, j],
+                    left_gray_img[i, j],
+                    left_gray_img[i, j]
+                ])
+        points_list = np.array(points_list)
+
+        # one line in ground truth file
+        # r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+
+        # homogeneous 4x4 transformation matrix
+        # r11 r12 r13 tx
+        # r21 r22 r23 ty
+        # r31 r32 r33 tz
+        # 0   0   0   1
+        T = np.array([float(str_val) for str_val in self.pos_lns[idx].strip().split(' ')], dtype=np.float32).reshape((3, 4))
+        R = T[:3, :3].T
+        t = T[:3,  3]
+        points_list[:, :3] = points_list[:, :3] @ R + t
+        T = np.eye(4)
+        T[:3, :3] = R
+        T[:3,  3] = t
+
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(points_list[:, :3])
+        pcd.colors = o3d.utility.Vector3dVector(points_list[:, 3:])
+        pcd.estimate_normals()
+
+        points_list = np.concatenate([pcd.points, pcd.colors, pcd.normals], axis=1)
+        points_list = utils.voxel_down_sample(points_list, self.voxel_size)
+        points_list = utils.radius_outlier_filter(points_list, self.filter_radius, self.filter_mustnn)
+
+        return points_list, T

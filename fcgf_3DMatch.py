@@ -1,8 +1,9 @@
-import os
 import numpy as np
 import collections
 import open3d as o3d
 from easydict import EasyDict as edict
+
+import time
 
 from datasets import datasets
 import config
@@ -58,6 +59,7 @@ def preprocess(points:np.ndarray, voxel_size:float):
 
 if __name__ == "__main__":
     args = edict(vars(config.args))
+    print(dir(args))
 
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args.data_type](
@@ -75,13 +77,15 @@ if __name__ == "__main__":
         1,
         model_conf["model_n_out"],
         bn_momentum=model_conf["bn_momentum"],
-        conv1_kernel_size=model_conf['conv1_kernel_size'],
-        normalize_feature=model_conf['normalize_feature']
+        conv1_kernel_size=model_conf["conv1_kernel_size"],
+        normalize_feature=model_conf["normalize_feature"]
     )
     feat_model.load_state_dict(model_params)
     feat_model.eval()
+    model_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    feat_model.to(model_device)
 
-
+    timer = utils.timer()
     for points1, points2, T_gdth, sample_name in dataloader:
         utils.log_info(sample_name)
         # step1: voxel downsample
@@ -92,8 +96,8 @@ if __name__ == "__main__":
         xyzs2_o3d = utils.npy2o3d(xyzs2)
 
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(xyzs1, args.ICP_radius*1.10)
-        keyptsdict2 = utils.iss_detect(xyzs2, args.ICP_radius*1.10)
+        keyptsdict1 = utils.iss_detect(xyzs1, args.ICP_radius)
+        keyptsdict2 = utils.iss_detect(xyzs2, args.ICP_radius)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
@@ -102,8 +106,8 @@ if __name__ == "__main__":
 
         # step3: compute FCGF for each key point
         # compute all points' fcgf
-        fcgfs1 = feat_model(ME.SparseTensor(coordinates=voxcoords1, features=feats1)).F.detach().numpy()
-        fcgfs2 = feat_model(ME.SparseTensor(coordinates=voxcoords2, features=feats2)).F.detach().numpy()
+        fcgfs1 = feat_model(ME.SparseTensor(coordinates=voxcoords1.to(model_device), features=feats1.to(model_device))).F.detach().cpu().numpy()
+        fcgfs2 = feat_model(ME.SparseTensor(coordinates=voxcoords2.to(model_device), features=feats2.to(model_device))).F.detach().cpu().numpy()
         # only select key points' fcgf
         keyfcgfs1 = fcgfs1[keyptsdict1["id"].values].T
         keyfcgfs2 = fcgfs2[keyptsdict2["id"].values].T
@@ -130,7 +134,7 @@ if __name__ == "__main__":
             ),
             checkr_params=CHECKRCONF(
                 max_corresponding_dist=args.ICP_radius*2.5,
-                max_mnn_dist_ratio=0.85,
+                max_mnn_dist_ratio=0.80,
                 normal_angle_threshold=None
             )
         )
@@ -158,9 +162,8 @@ if __name__ == "__main__":
         xyzs2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
 
         # output to file
-        out_dir  = "./samples/me_matches_sample"
-        utils.fuse2frags_with_matches(xyzs1, xyzs2, init_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "init_matches.ply")
-        utils.fuse2frags_with_matches(xyzs1, xyzs2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, out_dir, "gdth_matches.ply")
+        utils.fuse2frags_with_matches(xyzs1, xyzs2, init_matches, utils.ply_vertex_type, utils.ply_edge_type, args.out_root, "init_matches.ply")
+        utils.fuse2frags_with_matches(xyzs1, xyzs2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, args.out_root, "gdth_matches.ply")
         points1_o3d = utils.npy2o3d(points1)
         points2_o3d = utils.npy2o3d(points2)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
@@ -168,7 +171,7 @@ if __name__ == "__main__":
         utils.fuse2frags(
             utils.apply_transformation(utils.o3d2npy(points1_o3d), T_pred),
             utils.o3d2npy(points2_o3d), 
-            utils.ply_vertex_type, out_dir, "original_color.ply"
+            utils.ply_vertex_type, args.out_root, "original_color.ply"
         )
         points1_o3d.paint_uniform_color([1.0, 1.0, 0.0])
         points2_o3d.paint_uniform_color([0.0, 1.0, 1.0])
@@ -179,12 +182,12 @@ if __name__ == "__main__":
         utils.fuse2frags(
             utils.apply_transformation(points1, T_pred),
             points2, 
-            utils.ply_vertex_type, out_dir, "pred.ply"
+            utils.ply_vertex_type, args.out_root, "pred.ply"
         )
         utils.fuse2frags(
             utils.apply_transformation(points1, T_gdth),
             points2, 
-            utils.ply_vertex_type, out_dir, "gdth.ply"
+            utils.ply_vertex_type, args.out_root, "gdth.ply"
         )
         utils.log_info(f"finish processing {sample_name}")
         break # only for test
