@@ -14,12 +14,12 @@ from utils import icp
 # step1: read point cloud pair
 # step2: voxel down sample
 # step3: extract ISS feature
-# step4: FPFH feature description
+# step4: feature description
 # step5: RANSAC registration
-#   step5.1: establish feature correspondences using KNN
-#   step5.2: select 4 pairs to solve the transformation R and t
+#   step5.1: establish feature correspondences
+#   step5.2: select n(> 3) pairs to solve the transformation R and t
 #   step5.3: repeat step5.2 until error converge
-# step6: refine estimation for ICP
+# step6: ICP optimized transformation [R,t]
 
 #RANSAC configuration:
 RANSACCONF = collections.namedtuple(

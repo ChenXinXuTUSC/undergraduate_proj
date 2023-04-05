@@ -1,6 +1,6 @@
 import utils
 
-from . import simpleunet, resunet, pyramid
+from .fcgf import simpleunet, resunet, pyramid
 
 MODELS = []
 

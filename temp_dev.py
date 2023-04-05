@@ -45,18 +45,6 @@ CHECKRCONF = collections.namedtuple(
     ]
 )
 
-@torch.no_grad()
-def preprocess(points:np.ndarray, voxel_size:float):
-    voxcoords, voxidxs = ME.utils.sparse_quantize(
-        coordinates=points[:,:3], 
-        quantization_size=voxel_size,
-        return_index=True
-    )
-    voxcoords = ME.utils.batched_coordinates([voxcoords])
-    feats = torch.ones(len(voxidxs), 1)
-    return points[voxidxs], voxcoords, voxidxs, feats
-
-
 if __name__ == "__main__":
     args = edict(vars(config.args))
 
@@ -92,25 +80,37 @@ if __name__ == "__main__":
         # 2. voxielized points' coordinates
         
         # step1: voxel downsample
-        xyzs1, voxcoords1, voxidxs1, feats1 = preprocess(points1, args.ICP_radius)
-        xyzs2, voxcoords2, voxidxs2, feats2 = preprocess(points2, args.ICP_radius)
+        # dse2vox means subscripts of elements from dense point cloud
+        # array that will make up the down sampled point cloud
+        coords1, voxelized_coords1, idx_dse2vox1 = utils.voxel_down_sample_gpt(points1, args.ICP_radius)
+        coords2, voxelized_coords2, idx_dse2vox2 = utils.voxel_down_sample_gpt(points2, args.ICP_radius)
 
-        xyzs1_o3d = utils.npy2o3d(xyzs1)
-        xyzs2_o3d = utils.npy2o3d(xyzs2)
+        coords1_o3d = utils.npy2o3d(coords1)
+        coords2_o3d = utils.npy2o3d(coords2)
 
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(xyzs1, args.ICP_radius)
-        keyptsdict2 = utils.iss_detect(xyzs2, args.ICP_radius)
+        keyptsdict1 = utils.iss_detect(coords1, args.ICP_radius)
+        keyptsdict2 = utils.iss_detect(coords2, args.ICP_radius)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
-        keypts1 = xyzs1[keyptsdict1["id"].values]
-        keypts2 = xyzs2[keyptsdict2["id"].values]
+        keypts1 = coords1[keyptsdict1["id"].values]
+        keypts2 = coords2[keyptsdict2["id"].values]
 
         # step3: compute FCGF for each key point
         # compute all points' fcgf
-        fcgfs1 = feat_model(ME.SparseTensor(coordinates=voxcoords1.to(model_device), features=feats1.to(model_device))).F.detach().cpu().numpy()
-        fcgfs2 = feat_model(ME.SparseTensor(coordinates=voxcoords2.to(model_device), features=feats2.to(model_device))).F.detach().cpu().numpy()
+        fcgfs1 = feat_model(
+            ME.SparseTensor(
+                coordinates=ME.utils.batched_coordinates([voxelized_coords1]).to(model_device), 
+                features=torch.ones(len(coords1), 1).to(model_device)
+            )
+        ).F.detach().cpu().numpy()
+        fcgfs2 = feat_model(
+            ME.SparseTensor(
+                coordinates=ME.utils.batched_coordinates([voxelized_coords2]).to(model_device), 
+                features=torch.ones(len(coords2), 1).to(model_device)
+            )
+        ).F.detach().cpu().numpy()
         # only select key points' fcgf
         keyfcgfs1 = fcgfs1[keyptsdict1["id"].values].T
         keyfcgfs2 = fcgfs2[keyptsdict2["id"].values].T
@@ -148,9 +148,8 @@ if __name__ == "__main__":
         else:
             utils.log_info("correspondence set num:", len(initial_ransac.correspondence_set))
         
-        search_tree_points2 = o3d.geometry.KDTreeFlann(xyzs2_o3d)
         final_result = icp.ICP_exact_match(
-            xyzs1, xyzs2, search_tree_points2, 
+            coords1, coords2, o3d.geometry.KDTreeFlann(coords2_o3d), 
             initial_ransac.transformation, args.ICP_radius,
             100
         )
@@ -158,15 +157,20 @@ if __name__ == "__main__":
         T_pred = final_result.transformation
         utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
-        xyzs1 = utils.apply_transformation(xyzs1, T_pred)
+        coords1 = utils.apply_transformation(coords1, T_pred)
+        # ============================= end of registration =============================
 
+
+
+        # do some visualization works
         # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
-        xyzs1[keyptsdict1["id"].values, 3:6] = np.array([255, 0, 0])
-        xyzs2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
+        coords1[keyptsdict1["id"].values, 3:6] = np.array([255, 0, 0])
+        coords2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
 
-        # output to file
-        utils.fuse2frags_with_matches(xyzs1, xyzs2, init_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "init_matches.ply")
-        utils.fuse2frags_with_matches(xyzs1, xyzs2, gdth_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "gdth_matches.ply")
+        # voxelized points show matches
+        utils.fuse2frags_with_matches(coords1, coords2, init_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "init_matches.ply")
+        utils.fuse2frags_with_matches(coords1, coords2, gdth_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "gdth_matches.ply")
+        # original colour
         points1_o3d = utils.npy2o3d(points1)
         points2_o3d = utils.npy2o3d(points2)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
@@ -176,6 +180,7 @@ if __name__ == "__main__":
             utils.o3d2npy(points2_o3d), 
             utils.make_ply_vtx_type(True, True), args.out_root, "original_color.ply"
         )
+        # dense points comparison
         points1_o3d.paint_uniform_color([1.0, 1.0, 0.0])
         points2_o3d.paint_uniform_color([0.0, 1.0, 1.0])
         points1 = utils.o3d2npy(points1_o3d)

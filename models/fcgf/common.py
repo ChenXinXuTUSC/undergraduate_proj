@@ -16,7 +16,8 @@ def get_norm(norm_type, num_feats, bn_momentum=0.05, dimension=-1):
     elif norm_type == 'INBN':
         return nn.Sequential(
             ME.MinkowskiInstanceNorm(num_feats),
-            ME.MinkowskiBatchNorm(num_feats, momentum=bn_momentum))
+            ME.MinkowskiBatchNorm(num_feats, momentum=bn_momentum)
+        )
     else:
         raise ValueError(f'Type {norm_type}, not defined')
 

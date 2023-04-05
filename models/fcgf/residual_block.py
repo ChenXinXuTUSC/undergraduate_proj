@@ -6,7 +6,7 @@
 # - Christopher Choy, JunYoung Gwak, Silvio Savarese, 4D Spatio-Temporal ConvNets: Minkowski Convolutional Neural Networks, CVPR 2019
 import torch.nn as nn
 
-from models.common import get_norm, get_nonlinearity
+from .common import get_norm, get_nonlinearity
 
 import MinkowskiEngine as ME
 import MinkowskiEngine.MinkowskiFunctional as MEF

@@ -8,9 +8,9 @@ import torch
 import torch.nn as nn
 import MinkowskiEngine as ME
 import MinkowskiEngine.MinkowskiFunctional as MEF
-from models.common import get_norm
+from .common import get_norm
 
-from models.residual_block import conv, conv_tr, get_block
+from .residual_block import conv, conv_tr, get_block
 
 
 class ResUNet(ME.MinkowskiNetwork):

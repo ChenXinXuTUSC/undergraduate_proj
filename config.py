@@ -8,10 +8,10 @@ parser.add_argument("--ICP_radius", type=float, required=True, help="radius for 
 # dataset related options
 
 # modelnet40
-parser.add_argument("--classes", type=str, help="model classes seperated by space, e.g., 'a b c d...'")
+parser.add_argument("--classes", type=str, default="", help="model classes seperated by space, e.g., 'a b c d...'")
 # 3DMatch
-parser.add_argument("--overlap_up", type=float, help="upper threshold of overlap ratio of the sample pair")
-parser.add_argument("--overlap_dn", type=float, help="lower thresholf of overlap ratio of the sample pair")
+parser.add_argument("--overlap_up", type=float, default=0.3, help="upper threshold of overlap ratio of the sample pair")
+parser.add_argument("--overlap_dn", type=float, default=0.5, help="lower thresholf of overlap ratio of the sample pair")
 # KITTI odometry
 parser.add_argument("--step_size", type=int, help="interleave between two frames")
 parser.add_argument("--voxel_size", type=float, help="voxel size for down sampling")

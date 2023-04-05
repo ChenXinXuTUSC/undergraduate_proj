@@ -12,54 +12,56 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--data_type", "ModelNet40Dense",
-                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
-                "--ICP_radius", "0.01",
-                "--classes", "airplane guitar flower_pot"
-            ]
-        },
-        {
-            "name": "ISS modelnet40",
-            "type": "python",
-            "request": "launch",
-            "program": "iss_modelnet40.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--data_type", "ModelNet40Dense",
-                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
-                "--out_root", "${workspaceFolder}/results/iss_modelnet40",
-                "--ICP_radius", "0.01",
-                "--classes", "airplane guitar"
-            ]
-        },
-        {
-            "name": "ISS 3DMatch",
-            "type": "python",
-            "request": "launch",
-            "program": "iss_3DMatch.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--out_root", "${workspaceFolder}/results/iss_3dmatch",
+                "--out_root", "${workspaceFolder}/results/fpfh_3dmatch",
                 "--ICP_radius", "0.025",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
             ]
         },
         {
-            "name": "ISS KITTIOdo",
+            "name": "FPFH modelnet40",
             "type": "python",
             "request": "launch",
-            "program": "iss_kittiodo.py",
+            "program": "fpfh_modelnet40.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--out_root", "${workspaceFolder}/results/fpfh_modelnet40",
+                "--ICP_radius", "0.01",
+                "--classes", "airplane guitar"
+            ]
+        },
+        {
+            "name": "FPFH 3DMatch",
+            "type": "python",
+            "request": "launch",
+            "program": "fpfh_3DMatch.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ThreeDMatchFCGF",
+                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--out_root", "${workspaceFolder}/results/fpfh_3dmatch",
+                "--ICP_radius", "0.025",
+                "--overlap_dn", "0.3",
+                "--overlap_up", "0.5",
+            ]
+        },
+        {
+            "name": "FPFH KITTIOdo",
+            "type": "python",
+            "request": "launch",
+            "program": "fpfh_kittiodo.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--data_type", "KITTIOdometry",
                 "--data_root", "/home/hm/fuguiduo/datasets/KITTI/odometry/dataset/sequences/00",
-                "--out_root", "${workspaceFolder}/results/iss_kittiodo",
+                "--out_root", "${workspaceFolder}/results/fpfh_kittiodo",
                 "--step_size", "5",
                 "--ICP_radius", "0.05",
                 "--voxel_size", "0.05",
@@ -71,7 +73,7 @@
             "name": "FCGF 3DMatch",
             "type": "python",
             "request": "launch",
-            "program": "fcgf_3DMatch.py",
+            "program": "temp_dev.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

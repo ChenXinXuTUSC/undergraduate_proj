@@ -59,6 +59,7 @@ def preprocess(points:np.ndarray, voxel_size:float):
 
 if __name__ == "__main__":
     args = edict(vars(config.args))
+    print(dir(args))
 
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args.data_type](
@@ -86,11 +87,7 @@ if __name__ == "__main__":
 
     timer = utils.timer()
     for points1, points2, T_gdth, sample_name in dataloader:
-        utils.log_info(f"processing {sample_name}")
-        # FCGF model needs:
-        # 1. down sampled points' coordinates
-        # 2. voxielized points' coordinates
-        
+        utils.log_info(sample_name)
         # step1: voxel downsample
         xyzs1, voxcoords1, voxidxs1, feats1 = preprocess(points1, args.ICP_radius)
         xyzs2, voxcoords2, voxidxs2, feats2 = preprocess(points2, args.ICP_radius)
@@ -165,8 +162,8 @@ if __name__ == "__main__":
         xyzs2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
 
         # output to file
-        utils.fuse2frags_with_matches(xyzs1, xyzs2, init_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "init_matches.ply")
-        utils.fuse2frags_with_matches(xyzs1, xyzs2, gdth_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "gdth_matches.ply")
+        utils.fuse2frags_with_matches(xyzs1, xyzs2, init_matches, utils.ply_vertex_type, utils.ply_edge_type, args.out_root, "init_matches.ply")
+        utils.fuse2frags_with_matches(xyzs1, xyzs2, gdth_matches, utils.ply_vertex_type, utils.ply_edge_type, args.out_root, "gdth_matches.ply")
         points1_o3d = utils.npy2o3d(points1)
         points2_o3d = utils.npy2o3d(points2)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
@@ -174,7 +171,7 @@ if __name__ == "__main__":
         utils.fuse2frags(
             utils.apply_transformation(utils.o3d2npy(points1_o3d), T_pred),
             utils.o3d2npy(points2_o3d), 
-            utils.make_ply_vtx_type(True, True), args.out_root, "original_color.ply"
+            utils.ply_vertex_type, args.out_root, "original_color.ply"
         )
         points1_o3d.paint_uniform_color([1.0, 1.0, 0.0])
         points2_o3d.paint_uniform_color([0.0, 1.0, 1.0])
@@ -185,12 +182,12 @@ if __name__ == "__main__":
         utils.fuse2frags(
             utils.apply_transformation(points1, T_pred),
             points2, 
-            utils.make_ply_vtx_type(True, True), args.out_root, "pred.ply"
+            utils.ply_vertex_type, args.out_root, "pred.ply"
         )
         utils.fuse2frags(
             utils.apply_transformation(points1, T_gdth),
             points2, 
-            utils.make_ply_vtx_type(True, True), args.out_root, "gdth.ply"
+            utils.ply_vertex_type, args.out_root, "gdth.ply"
         )
         utils.log_info(f"finish processing {sample_name}")
         break # only for test

@@ -6,20 +6,7 @@ import open3d as o3d
 
 from .colorlog import *
 
-ply_vertex_type = np.dtype(
-    [
-        ("x", "f4"), 
-        ("y", "f4"),
-        ("z", "f4"), 
-        ("red", "u1"), 
-        ("green", "u1"), 
-        ("blue", "u1"),
-        ("nx", "f4"),
-        ("ny", "f4"),
-        ("nz", "f4")
-    ]
-)
-ply_edge_type = np.dtype(
+ply_edg_i1i2rgb = np.dtype(
     [
         ("vertex1", "int32"), 
         ("vertex2", "int32"),
@@ -29,7 +16,31 @@ ply_edge_type = np.dtype(
     ]
 )
 
-def npz2npy(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
+def make_ply_vtx_type(has_rgb: bool=False, has_normal: bool=False):
+    vtx_type = [
+        ("x", "f4"), 
+        ("y", "f4"),
+        ("z", "f4")
+    ]
+    if has_rgb:
+        vtx_type.extend(
+            [
+                ("red", "u1"), 
+                ("green", "u1"), 
+                ("blue", "u1"),
+            ]
+        )
+    if has_normal:
+        vtx_type.extend(
+            [
+                ("nx", "f4"),
+                ("ny", "f4"),
+                ("nz", "f4")
+            ]
+        )
+    return np.dtype(vtx_type)
+
+def npz2npy(npz_path: str, overwrite_rgb: bool=False, new_rgb=None):
     '''
     这个函数是针对3DMatch-FCGF的npz数据文件读取设计的，并不通用，对于
     其他npz存储文件，并不能提前知道里面存储了哪些属性，但是针对当前的
@@ -56,7 +67,7 @@ def npz2npy(npz_path:str, overwrite_rgb:bool=False, new_rgb=None):
 
     return np.concatenate([all_pos, all_rgb], axis=1)
 
-def npy2o3d(points:np.ndarray):
+def npy2o3d(points: np.ndarray):
     if len(points.shape) > 2:
         raise Exception("npy2o3d could only handle data shape of [num_points, num_features]")
     
@@ -73,7 +84,7 @@ def npy2o3d(points:np.ndarray):
     
     return points_o3d
 
-def o3d2npy(points_o3d:o3d.geometry.PointCloud):
+def o3d2npy(points_o3d: o3d.geometry.PointCloud):
     attr = []
     if len(points_o3d.points) > 0:
         attr.append(np.asarray(points_o3d.points)) 
@@ -83,7 +94,7 @@ def o3d2npy(points_o3d:o3d.geometry.PointCloud):
         attr.append(np.asarray(points_o3d.normals))
     return np.concatenate(attr, axis=1)
 
-def ply2npy(ply_path:str):
+def ply2npy(ply_path: str):
     try:
         plydata = PlyData.read(ply_path)
         element_names = [e.name for e in plydata.elements]
@@ -103,7 +114,7 @@ def ply2npy(ply_path:str):
         return None
     return npy_points
 
-def transform_augment(points:np.ndarray, angle:float, dist:float):
+def transform_augment(points: np.ndarray, angle: float, dist: float):
     ''' 
     Randomly rotate the point clouds along the Y-aixs\
     and randomly translate to augment the dataset.
@@ -136,7 +147,7 @@ def transform_augment(points:np.ndarray, angle:float, dist:float):
         points[:, 6:9] = np.dot(points[:, 6:9], rotmat)
     return points, rotmat, transd
 
-def build_random_transform(angle:float, dist:float):
+def build_random_transform(angle: float, dist: float):
     rotation_angle = np.random.uniform() * (angle / 180.0) * np.pi # convert to pi
     cosval = np.cos(rotation_angle)
     sinval = np.sin(rotation_angle)
@@ -153,10 +164,23 @@ def build_random_transform(angle:float, dist:float):
     T[:3, 3] = transd
     return T
 
-def voxel_down_sample(points:np.ndarray, voxel_size:float):
-    '''
-    makes sure that the first 3 dimension of the points arr\n
-    is (x,y,z) coordinates
+def voxel_down_sample(points: np.ndarray, voxel_size: float):
+    '''compute the down sampled points' coordinates
+    
+    params
+    -
+    points: np.ndarray
+        Original dense point cloud data in shape
+        (num_pts, num_feats).
+    voxel_size: float
+        Unit size of down sample operation,  not
+        radius but length of cubic.
+    
+    return
+    -
+    down-sampled coords: np.ndarray
+        Down sampled points coordinates in shape
+        (num_pts, num_feats).
     '''
     max_coord = np.max(points[:,0:3], axis=0)
     min_coord = np.min(points[:,0:3], axis=0)
@@ -176,11 +200,77 @@ def voxel_down_sample(points:np.ndarray, voxel_size:float):
     log_info(f"voxel downsample: {len(points)}->{len(filtered_points)}")
     return filtered_points
 
+def voxel_down_sample_gpt(points: np.ndarray, voxel_size: float, use_avg: bool=False):
+    '''code given by ChatGPT, works fine
+    
+    params
+    -
+    points: np.ndarray
+        Original dense point cloud data in shape
+        (num_pts, num_feats).
+    voxel_size: float
+        Unit size of down sample operation,  not
+        radius but length of cubic.
+    use_avg: bool
+        Whether to use the average of all coords
+        in the same voxel or not. If false, choo
+        se one point in the voxel.
+    
+    return
+    -
+    down-sampled coords: np.ndarray
+        Down sampled points coordinates in shape
+        (num_pts, num_feats).
+    quantized coords: np.ndarray
+        Quantized   coordinates   of  the  down-
+        sampled ones. (int, int, int).
+    idx_dse2vox: np.ndarray
+        If 'use_avg' is true, indices  of  dense
+        point cloud coords array to form the vox
+        array is provided.
+    '''
+    # find the bounding box wrapping all points
+    min_coord = np.min(points[:, :3], axis=0)
+    max_coord = np.max(points[:, :3], axis=0)
+    
+    # calculate voxels of each axis
+    voxel_numaxis = (max_coord - min_coord) // voxel_size
+    
+    # calculate voxel index of each point
+    voxel_indices = (points[:, :3] - min_coord) // voxel_size
+    
+    # calculate voxel center of each point
+    voxel_centers = voxel_indices * voxel_size + voxel_size / 2.0
+    
+    # group the points by voxel indices
+    # return_index=True
+    #   given a list of subscript which can be used to choose elements
+    #   from the original array to form the unique array
+    # return_inverse=True
+    #   given a list of subscript which can be used to choose elements
+    #   from the unique array to form the original array
+    voxel_uniques, idx_old2new, idx_new2old, unique_counts = np.unique(
+        voxel_indices, axis=0,
+        return_index=True,
+        return_inverse=True,
+        return_counts=True
+    )
+    
+    voxel_points = np.zeros((len(voxel_uniques), points.shape[1]))
+    
+    if use_avg:
+        np.add.at(voxel_points, idx_new2old, points)
+        voxel_points /= unique_counts.reshape(-1, 1) # column divided by column
+    else:
+        voxel_points = points[idx_old2new]
+    
+    return voxel_points, voxel_uniques, None if use_avg else idx_old2new
+
 def dump1frag(
-        points:np.ndarray,
-        ply_vertex_type:np.dtype,
-        out_dir:str=".",
-        out_name:str="out.ply"
+        points: np.ndarray,
+        ply_vertex_type: np.dtype,
+        out_dir: str=".",
+        out_name: str="out.ply"
     ):
     points = np.array([tuple(line) for line in points], dtype=ply_vertex_type)
     if not os.path.exists(out_dir):
@@ -192,10 +282,10 @@ def dump1frag(
     ).write(os.path.join(out_dir, out_name))
 
 def fuse2frags(
-        points1:np.ndarray, 
-        points2:np.ndarray, 
-        ply_vertex_type:np.dtype,
-        out_dir:str=".", out_name:str="out.ply"
+        points1: np.ndarray, 
+        points2: np.ndarray, 
+        ply_vertex_type: np.dtype,
+        out_dir: str=".", out_name: str="out.ply"
     ):
     points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_vertex_type)
     points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_vertex_type)
@@ -207,9 +297,9 @@ def fuse2frags(
     ).write(os.path.join(out_dir, out_name))
 
 def fusexfrags(
-        points_list:list,
-        ply_vertex_type:np.dtype,
-        out_dir:str=".", out_name:str="out.ply"
+        points_list: list,
+        ply_vertex_type: np.dtype,
+        out_dir: str=".", out_name: str="out.ply"
     ):
     points_plyformat = []
     for points in points_list:
@@ -223,12 +313,12 @@ def fusexfrags(
     ).write(os.path.join(out_dir, out_name))
 
 def fuse2frags_with_matches(
-        points1:np.ndarray, 
-        points2:np.ndarray, 
-        matches:np.ndarray,
-        ply_vertex_type:np.dtype,
-        ply_line_type:np.dtype,
-        out_dir:str=".", out_name:str="out.ply"
+        points1: np.ndarray, 
+        points2: np.ndarray, 
+        matches: np.ndarray,
+        ply_vertex_type: np.dtype,
+        ply_line_type: np.dtype,
+        out_dir: str=".", out_name: str="out.ply"
     ):
     points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_vertex_type)
     points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_vertex_type)
@@ -288,7 +378,7 @@ def solve_procrustes(P,Q):
     T[:3, 3] = t
     return T
 
-def apply_transformation(srcpts:np.ndarray, T:np.ndarray):
+def apply_transformation(srcpts: np.ndarray, T: np.ndarray):
     import torch
 
     srcpts = copy.deepcopy(srcpts)
@@ -309,7 +399,7 @@ def apply_transformation(srcpts:np.ndarray, T:np.ndarray):
         srcpts[:, 6:9] = srcpts[:, 6:9] @ R
     return srcpts
 
-def resolve_axis_angle(T:np.ndarray, deg:bool):
+def resolve_axis_angle(T: np.ndarray, deg: bool):
     '''
     this function is referencing:\n
     https://blog.csdn.net/Sandy_WYM_/article/details/84309000
@@ -329,7 +419,7 @@ def resolve_axis_angle(T:np.ndarray, deg:bool):
     raxis = raxis / np.sqrt((raxis * raxis).sum()) # normalization
     return raxis, angle
 
-def ground_truth_matches(matches:np.ndarray, pcd1, pcd2, radius:float, T:np.ndarray):
+def ground_truth_matches(matches: np.ndarray, pcd1, pcd2, radius: float, T: np.ndarray):
     '''
     params
     ----------
@@ -365,3 +455,28 @@ def ground_truth_matches(matches:np.ndarray, pcd1, pcd2, radius:float, T:np.ndar
     is_correct = ((pcd1[matches[:, 0]] - pcd2[matches[:, 1]]) ** 2).sum(axis=1) < radius ** 2
     # log_dbug("in filter:\n", ((pcd1[matches[is_correct][:, 0]] - pcd2[matches[is_correct][:, 1]]) ** 2).sum(axis=1))
     return is_correct
+
+def principle_K_components(samples: np.ndarray, k: int):
+    '''
+    params
+    ----------
+    * samples-np.ndarray: each line represents a sample data
+
+    return
+    ----------
+    * principle component variable columns indices in decreasing order
+    '''
+    samples = samples - samples.mean(axis=0)
+    cov = np.matmul(samples.T, samples) / len(samples)
+    # numpy.linalg.eig() return eigen values and eigen
+    # vectors, denoted by w, v, where each  column  of
+    # the v is an eigen vector(that means  you  should
+    # use v[:, idx] to access one eigen vector). Eigen
+    # vectors are orthogonal to each other and are nor
+    # malized to unit vector
+    eigvals, eigvecs = np.linalg.eig(cov)
+    # numpy.argsort return indices that would sort
+    # the original array in ascend order
+    eigvecs = eigvecs[:,eigvals.argsort()[::-1]][:, :k] # flip into descend order
+
+    return eigvecs

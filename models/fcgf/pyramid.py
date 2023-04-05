@@ -7,9 +7,9 @@
 import torch
 import torch.nn as nn
 import MinkowskiEngine as ME
-from models.common import get_norm, get_nonlinearity
+from .common import get_norm, get_nonlinearity
 
-from models.residual_block import get_block, conv, conv_tr, conv_norm_non
+from .residual_block import get_block, conv, conv_tr, conv_norm_non
 
 
 class PyramidModule(ME.MinkowskiNetwork):

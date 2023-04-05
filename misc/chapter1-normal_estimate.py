@@ -1,20 +1,22 @@
 import open3d as o3d
 import numpy as np
 
-from datasets import datasets
+from ..datasets import datasets
 import config
 import utils
 
 from easydict import EasyDict as edict
 
-def pca_analysis(points:np.ndarray, correlation=False, sort=True):
+def pca_analysis(points:np.ndarray, k=3):
     center = points.mean(axis=0)
     decentralized_points = points - center
     # compute data covariance matrix
-    cov = np.matmul(decentralized_points.T, decentralized_points)
+    cov = np.matmul(decentralized_points.T, decentralized_points) / len(points)
     # for 3d data, it has at most 3 bases
     # PCA和SVD的本质计算都在特征值分解这一步
     eigvecs, eigvals = np.linalg.eig(cov)
+    eigvecs = eigvecs[:,eigvals.argsort()[::-1]][:, :k] # flip into descend order
+    return eigvals[:, :k]
 
 if __name__ == "__main__":
     args = edict(vars(config.args))
@@ -39,6 +41,12 @@ if __name__ == "__main__":
 
         # compute local covariance matrix for points2
         # to estimate normals
+        points2_o3d = utils.npy2o3d(points2)
+        utils.log_info(len(points2_o3d))
+        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*1.25, max_nn=30))
+        points2_o3d.pain_uniform_color([0.0, 0.0, 0.0])
+        points2 = utils.o3d2npy(points2_o3d)
+        
 
 
         utils.dump1frag(points1, utils.ply_vertex_type, out_dir="./samples/pca_analysis_visual", out_name="output.ply")
