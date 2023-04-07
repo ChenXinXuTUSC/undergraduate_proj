@@ -18,7 +18,11 @@
                 "--ICP_radius", "0.025",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
-            ]
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
         },
         {
             "name": "FPFH modelnet40",
@@ -33,7 +37,11 @@
                 "--out_root", "${workspaceFolder}/results/fpfh_modelnet40",
                 "--ICP_radius", "0.01",
                 "--classes", "airplane guitar"
-            ]
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
         },
         {
             "name": "FPFH 3DMatch",
@@ -49,7 +57,11 @@
                 "--ICP_radius", "0.025",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
-            ]
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
         },
         {
             "name": "FPFH KITTIOdo",
@@ -67,7 +79,11 @@
                 "--voxel_size", "0.05",
                 "--filter_radius", "0.20",
                 "--filter_mustnn", "10"
-            ]
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
         },
         {
             "name": "FCGF 3DMatch",
@@ -85,7 +101,11 @@
                 "--overlap_up", "0.5",
                 "--feat_model", "ResUNetBN2C",
                 "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
-            ]
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
         },
         {
             "name": "iss test",
@@ -100,7 +120,11 @@
                 "--ICP_radius", "0.020",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
-            ]
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
         }
     ]
 }

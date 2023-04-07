@@ -31,20 +31,21 @@ def radius_outlier_filter(points:np.ndarray, radius:float, must_neighbors:int):
     return points[pts_idx_after]
 
 def iss_detect(points:np.ndarray, radius=0.25):
-    '''
-    Detect point cloud key points using Intrinsic Shape Signature(ISS)\n
-    ISS角点检测原论文要求使用RNN进行球形领域搜索，所以就不提供KNN的选项了\n
-    不要使用open3d的PointCloud对象来做搜索，角点检测的似乎不是非常正确，比\n
-    如很多平面上本来不应该有角点，但仍然均匀分布了角点
+    '''Detect point cloud key points using Intrinsic Shape Signature(ISS)
+
 
     params
     ----------
     * points: numpy.ndarray
-    * radius: float, radius for ISS computing
+        points array of shape(n, 3)
+    * radius: float.
+        radius for ISS computing.
 
     return
     ----------
-    * pd.DataFrame: map that stores keypoints' info
+    * pd.DataFrame: dict
+        dict structure that stores key points' id, pos and eigen
+        values of three main axises.
     '''
     # please figure out the difference between k nearest neighbour
     # search and radius search. In this ISS key  points  detection

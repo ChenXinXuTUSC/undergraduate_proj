@@ -169,16 +169,16 @@ def voxel_down_sample(points: np.ndarray, voxel_size: float):
     
     params
     -
-    points: np.ndarray
+    * points: np.ndarray.
         Original dense point cloud data in shape
         (num_pts, num_feats).
-    voxel_size: float
+    * voxel_size: float.
         Unit size of down sample operation,  not
         radius but length of cubic.
     
     return
     -
-    down-sampled coords: np.ndarray
+    * down-sampled coords: np.ndarray.
         Down sampled points coordinates in shape
         (num_pts, num_feats).
     '''
@@ -205,26 +205,26 @@ def voxel_down_sample_gpt(points: np.ndarray, voxel_size: float, use_avg: bool=F
     
     params
     -
-    points: np.ndarray
+    * points: np.ndarray.
         Original dense point cloud data in shape
         (num_pts, num_feats).
-    voxel_size: float
+    * voxel_size: float.
         Unit size of down sample operation,  not
         radius but length of cubic.
-    use_avg: bool
+    * use_avg: bool.
         Whether to use the average of all coords
         in the same voxel or not. If false, choo
         se one point in the voxel.
     
     return
     -
-    down-sampled coords: np.ndarray
+    * down-sampled coords: np.ndarray.
         Down sampled points coordinates in shape
         (num_pts, num_feats).
-    quantized coords: np.ndarray
+    * quantized coords: np.ndarray.
         Quantized   coordinates   of  the  down-
         sampled ones. (int, int, int).
-    idx_dse2vox: np.ndarray
+    * idx_dse2vox: np.ndarray.
         If 'use_avg' is true, indices  of  dense
         point cloud coords array to form the vox
         array is provided.
@@ -318,7 +318,8 @@ def fuse2frags_with_matches(
         matches: np.ndarray,
         ply_vertex_type: np.dtype,
         ply_line_type: np.dtype,
-        out_dir: str=".", out_name: str="out.ply"
+        out_dir: str=".", out_name: str="out.ply",
+        correct: np.ndarray=None
     ):
     points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_vertex_type)
     points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_vertex_type)
@@ -326,7 +327,14 @@ def fuse2frags_with_matches(
     
     base_offset = len(points1)
     matches[:,1] += base_offset
-    edges = np.concatenate([matches, np.array([[255, 0, 255]]).repeat(len(matches), axis=0)], axis=1)
+    colors = np.ones((len(matches), 3))
+    if correct is not None:
+        colors[:, 0] *= 255.0
+        colors[:, 1] *= correct.astype(np.float32)
+        colors[:, 2]  = 0.0
+    else:
+        colors *= 255.0
+    edges = np.concatenate([matches, colors], axis=1)
     edges = np.array([tuple(line) for line in edges], dtype=ply_line_type)
     PlyData(
         [

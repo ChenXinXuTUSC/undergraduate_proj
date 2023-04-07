@@ -3,8 +3,6 @@ import collections
 import open3d as o3d
 from easydict import EasyDict as edict
 
-import time
-
 from datasets import datasets
 import config
 import utils
@@ -60,7 +58,7 @@ if __name__ == "__main__":
 
     model_conf = torch.load(args.state_dict)["config"]
     model_params = torch.load(args.state_dict)["state_dict"]
-    feat_model = models.load_model(args.feat_model)(
+    feat_model = models.fcgf.load_model(args.feat_model)(
         1,
         model_conf["model_n_out"],
         bn_momentum=model_conf["bn_momentum"],
@@ -75,10 +73,7 @@ if __name__ == "__main__":
     timer = utils.timer()
     for points1, points2, T_gdth, sample_name in dataloader:
         utils.log_info(f"processing {sample_name}")
-        # FCGF model needs:
-        # 1. down sampled points' coordinates
-        # 2. voxielized points' coordinates
-        
+
         # step1: voxel downsample
         # dse2vox means subscripts of elements from dense point cloud
         # array that will make up the down sampled point cloud
@@ -89,8 +84,8 @@ if __name__ == "__main__":
         coords2_o3d = utils.npy2o3d(coords2)
 
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(coords1, args.ICP_radius)
-        keyptsdict2 = utils.iss_detect(coords2, args.ICP_radius)
+        keyptsdict1 = utils.iss_detect(coords1, args.ICP_radius * 1.25)
+        keyptsdict2 = utils.iss_detect(coords2, args.ICP_radius * 1.25)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
@@ -115,6 +110,7 @@ if __name__ == "__main__":
         keyfcgfs1 = fcgfs1[keyptsdict1["id"].values].T
         keyfcgfs2 = fcgfs2[keyptsdict2["id"].values].T
 
+        # step4: coarse ransac registration
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfcgfs1, keyfcgfs2)
         correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.ICP_radius * 2.5, T_gdth) # 上帝视角
@@ -126,18 +122,17 @@ if __name__ == "__main__":
         init_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T
         gdth_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T[correct]
 
-        # step4: ransac initial registration
         initial_ransac = utils.ransac_match(
             keypts1, keypts2,
             keyfcgfs1, keyfcgfs2,
             ransac_params=RANSACCONF(
                 max_workers=4, num_samples=4,
-                max_corresponding_dist=args.ICP_radius*2.5,
+                max_corresponding_dist=args.ICP_radius*2.0,
                 max_iter_num=2000, max_valid_num=100, max_refine_num=30
             ),
             checkr_params=CHECKRCONF(
-                max_corresponding_dist=args.ICP_radius*2.5,
-                max_mnn_dist_ratio=0.80,
+                max_corresponding_dist=args.ICP_radius*2.0,
+                max_mnn_dist_ratio=0.83,
                 normal_angle_threshold=None
             )
         )
@@ -157,8 +152,9 @@ if __name__ == "__main__":
         T_pred = final_result.transformation
         utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
-        coords1 = utils.apply_transformation(coords1, T_pred)
         # ============================= end of registration =============================
+
+
 
 
 
@@ -168,34 +164,33 @@ if __name__ == "__main__":
         coords2[keyptsdict2["id"].values, 3:6] = np.array([0, 255, 0])
 
         # voxelized points show matches
-        utils.fuse2frags_with_matches(coords1, coords2, init_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "init_matches.ply")
-        utils.fuse2frags_with_matches(coords1, coords2, gdth_matches, utils.make_ply_vtx_type(True, True), utils.ply_edg_i1i2rgb, args.out_root, "gdth_matches.ply")
+        utils.fuse2frags_with_matches(
+            utils.apply_transformation(coords1, T_pred), coords2, 
+            gdth_matches, utils.make_ply_vtx_type(True, True), 
+            utils.ply_edg_i1i2rgb, 
+            args.out_root, "matches.ply"
+        )
         # original colour
         points1_o3d = utils.npy2o3d(points1)
         points2_o3d = utils.npy2o3d(points2)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
         points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
-        utils.fuse2frags(
-            utils.apply_transformation(utils.o3d2npy(points1_o3d), T_pred),
-            utils.o3d2npy(points2_o3d), 
-            utils.make_ply_vtx_type(True, True), args.out_root, "original_color.ply"
-        )
         # dense points comparison
         points1_o3d.paint_uniform_color([1.0, 1.0, 0.0])
         points2_o3d.paint_uniform_color([0.0, 1.0, 1.0])
         points1 = utils.o3d2npy(points1_o3d)
         points2 = utils.o3d2npy(points2_o3d)
-        points1[:,3:6] = points1[:,3:6] * 255.0
-        points2[:,3:6] = points2[:,3:6] * 255.0
+        points1[:,3:6] *= 255.0
+        points2[:,3:6] *= 255.0
         utils.fuse2frags(
             utils.apply_transformation(points1, T_pred),
             points2, 
-            utils.make_ply_vtx_type(True, True), args.out_root, "pred.ply"
+            utils.make_ply_vtx_type(True, True), args.out_root, "pred_contrastive.ply"
         )
         utils.fuse2frags(
             utils.apply_transformation(points1, T_gdth),
             points2, 
-            utils.make_ply_vtx_type(True, True), args.out_root, "gdth.ply"
+            utils.make_ply_vtx_type(True, True), args.out_root, "gdth_contrastive.ply"
         )
         utils.log_info(f"finish processing {sample_name}")
         break # only for test
