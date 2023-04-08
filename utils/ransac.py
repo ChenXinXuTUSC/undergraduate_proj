@@ -1,10 +1,11 @@
+import torch
 import numpy as np
 import open3d as o3d
 import time
 from tqdm import tqdm
 
-import torch
 from scipy.spatial.distance import pdist
+import concurrent
 
 
 from .tools import *
@@ -119,49 +120,72 @@ def ransac_match(
 
     initial_T = None
     # infinite generator
-    proposal_generator = (matches[np.random.choice(range(matches.shape[0]), ransac_params.num_samples, replace=False)] for _ in iter(int, 1))
+    proposal_generator_serial = (matches[np.random.choice(range(matches.shape[0]), ransac_params.num_samples, replace=False)] for _ in iter(int, 1))
     validator = lambda proposal: one_iter_match(srckts, dstkts, proposal, checkr_params)
 
     # concurrently find the inital T, using 'with' method
     # so that Executor.shutdown(wait=True) is not needed.
     log_dbug("finding initial transformation T...")
-    # 这里使用多线程似乎会出问题。。。会卡住不动
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=ransac_params.max_workers) as executor:
     t1 = time.time()
-    for T in map(validator, proposal_generator):
-        if T is not None:
-            # log_dbug(f"initial transformation found:\n{T}")
-            tmp_R = T[:3, :3]
-            # log_dbug(f"validate if R is  orthogonal:\n{np.dot(tmp_R, tmp_R.T)}")
-            break
+    with concurrent.futures.ThreadPoolExecutor(max_workers=ransac_params.max_workers) as executor:
+        Ts = []
+        while len(Ts) < 4:
+            proposal_generator_parall = (matches[np.random.choice(range(matches.shape[0]), ransac_params.num_samples, replace=False)] for _ in range(ransac_params.max_workers))
+            futures = [executor.submit(validator, proposal) for proposal in proposal_generator_parall]
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    T = future.result()
+                except Exception as e:
+                    raise e
+                if T is not None:
+                    Ts.append(T)
+                    break
+    
+    # for T in map(validator, proposal_generator_serial):
+    #     if T is not None:
+    #         # log_dbug(f"initial transformation found:\n{T}")
+    #         tmp_R = T[:3, :3]
+    #         # log_dbug(f"validate if R is  orthogonal:\n{np.dot(tmp_R, tmp_R.T)}")
+    #         break
     t2 = time.time()
-    log_info(f"finding initial T costs {t2-t1:.2f}s")
-    initial_T = T
+    log_info(f"finding coarse candidate T costs {t2-t1:.2f}s")
+    
+    initial_T = None
+    best_fitness = 0.0
+    for T in Ts:
+        candidate_evaluation = icp.ICP_exact_match(
+            srckts, dstkts, dst_search_tree,
+            T,
+            ransac_params.max_corresponding_dist, ransac_params.max_refine_num
+        )
+        if candidate_evaluation.fitness > best_fitness:
+            best_fitness = candidate_evaluation.fitness
+            initial_T = T
 
     # baseline
-    best_res = icp.ICP_exact_match(
+    best_evaluation = icp.ICP_exact_match(
         srckts, dstkts, dst_search_tree,
         initial_T,
         ransac_params.max_corresponding_dist, ransac_params.max_refine_num
     )
     num_validation = 0
     for _ in tqdm(range(ransac_params.max_iter_num), total=ransac_params.max_iter_num, ncols=100, desc="ICP refining"):
-        T = validator(next(proposal_generator))
+        T = validator(next(proposal_generator_serial))
         # check validity
         if T is not None and num_validation < ransac_params.max_valid_num:
-            curr_res = icp.ICP_exact_match(
+            curr_evaluation = icp.ICP_exact_match(
                 srckts, dstkts, dst_search_tree,
                 T,
                 ransac_params.max_corresponding_dist, ransac_params.max_refine_num
             )
-            if curr_res.fitness > best_res.fitness:
-                best_res = curr_res
+            if curr_evaluation.fitness > best_evaluation.fitness:
+                best_evaluation = curr_evaluation
             num_validation += 1
         
         if num_validation == ransac_params.max_valid_num:
             break
 
-    return best_res
+    return best_evaluation
 
 
 def one_iter_match_copy(

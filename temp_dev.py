@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import collections
 import open3d as o3d
@@ -45,6 +46,9 @@ CHECKRCONF = collections.namedtuple(
 
 if __name__ == "__main__":
     args = edict(vars(config.args))
+    
+    if not os.path.exists(args.out_root):
+        os.makedirs(args.out_root, mode=0o755)
 
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args.data_type](
@@ -55,6 +59,7 @@ if __name__ == "__main__":
         augdist=4.0,
         args=args
     )
+    
 
     model_conf = torch.load(args.state_dict)["config"]
     model_params = torch.load(args.state_dict)["state_dict"]
@@ -84,8 +89,8 @@ if __name__ == "__main__":
         coords2_o3d = utils.npy2o3d(coords2)
 
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(coords1, args.ICP_radius * 1.25)
-        keyptsdict2 = utils.iss_detect(coords2, args.ICP_radius * 1.25)
+        keyptsdict1 = utils.iss_detect(coords1, args.ICP_radius * 0.95)
+        keyptsdict2 = utils.iss_detect(coords2, args.ICP_radius * 0.95)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
@@ -113,7 +118,7 @@ if __name__ == "__main__":
         # step4: coarse ransac registration
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfcgfs1, keyfcgfs2)
-        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.ICP_radius * 2.5, T_gdth) # 上帝视角
+        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.ICP_radius * 1.5, T_gdth) # 上帝视角
         correct_valid_num = correct.astype(np.int32).sum()
         correct_total_num = correct.shape[0]
         utils.log_info(f"gdth/init: {correct_valid_num:.2f}/{correct_total_num:.2f}={correct_valid_num/correct_total_num:.2f}")
@@ -127,14 +132,15 @@ if __name__ == "__main__":
             keyfcgfs1, keyfcgfs2,
             ransac_params=RANSACCONF(
                 max_workers=4, num_samples=4,
-                max_corresponding_dist=args.ICP_radius*2.0,
+                max_corresponding_dist=args.ICP_radius*1.5,
                 max_iter_num=2000, max_valid_num=100, max_refine_num=30
             ),
             checkr_params=CHECKRCONF(
-                max_corresponding_dist=args.ICP_radius*2.0,
-                max_mnn_dist_ratio=0.83,
+                max_corresponding_dist=args.ICP_radius*1.5,
+                max_mnn_dist_ratio=0.85,
                 normal_angle_threshold=None
-            )
+            ),
+            matches=matches
         )
 
         if len(initial_ransac.correspondence_set) == 0:
@@ -150,6 +156,7 @@ if __name__ == "__main__":
         )
 
         T_pred = final_result.transformation
+        # T_pred = np.eye(4)
         utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
         # ============================= end of registration =============================
