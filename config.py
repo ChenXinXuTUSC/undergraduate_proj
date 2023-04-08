@@ -9,6 +9,7 @@ parser.add_argument("--ICP_radius", type=float, required=True, help="radius for 
 
 # modelnet40
 parser.add_argument("--classes", type=str, default="", help="model classes seperated by space, e.g., 'a b c d...'")
+parser.add_argument("--partition", type=float, default=0.25, help="whether to partition point cloud into two parts or not")
 # 3DMatch
 parser.add_argument("--overlap_up", type=float, default=0.3, help="upper threshold of overlap ratio of the sample pair")
 parser.add_argument("--overlap_dn", type=float, default=0.5, help="lower thresholf of overlap ratio of the sample pair")

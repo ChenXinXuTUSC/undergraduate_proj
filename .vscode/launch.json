@@ -36,7 +36,8 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/fpfh_modelnet40",
                 "--ICP_radius", "0.01",
-                "--classes", "airplane guitar"
+                "--classes", "airplane guitar",
+                "--partition", "0.05",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0",

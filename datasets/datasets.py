@@ -43,9 +43,11 @@ class ModelNet40Dense(PairDataset):
         super().__init__(root, shuffle, augment, augdgre, augdist)
         self.files = []
         self.classes = None
+        self.partition = None
 
         if args is not None:
             self.classes = [cls.strip() for cls in args.classes.split()]
+            self.partition = args.partition
         mdirs = sorted([d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))])
         if len(self.classes) > 0:
             mdirs = [mdir for mdir in mdirs if mdir in self.classes]
@@ -74,14 +76,19 @@ class ModelNet40Dense(PairDataset):
         # add dummy rgb attributes, as point clouds
         # in ModelNet40 dataset don't have colors.
         points = np.concatenate((points[:,0:3], np.zeros((len(points), 3)), points[:,3:6]), axis=1)
-        points_aug = copy.deepcopy(points)
+        
+        if self.partition is not None:
+            part1, part2, part_overlap = self.split_by_plane(points, 0.5)
+        else:
+            part1 = points
+            part2 = copy.deepcopy(part1)
 
         T_gdth = np.eye(4)
         if self.augment:
             T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
-            points_aug = utils.apply_transformation(points_aug, T_gdth)
+            part2 = utils.apply_transformation(part2, T_gdth)
         
-        return points, points_aug, T_gdth, sample_name
+        return part1, part2, T_gdth, sample_name
 
     def __next__(self):
         self.iterate_pos += 1
@@ -91,6 +98,44 @@ class ModelNet40Dense(PairDataset):
 
     def __iter__(self):
         return self
+
+    def split_by_plane(self, points: np.ndarray, overlap_distance: float):
+        '''split a point cloud by a plane with overlapping area.
+        
+        params
+        -
+        * points: np.ndarray.
+            Points in shape(num_pts, feat_dimensions)
+        * overlap_distance: float.
+            Vertical distance of other point to plane
+        
+        return
+        -
+        * part1: np.ndarray.
+            Points upon the plane.
+        * part2: np.ndarray.
+            Points below the plane.
+        '''
+        coords = points[:, :3] # only need xyz
+        plane_point = coords.mean(axis=0)
+        plane_normal = utils.principle_K_components(coords, 1).flatten()
+        plane_normal /= np.linalg.norm(plane_normal)
+        # Calculate the distance of each point in the point cloud to the plane  
+        distances = np.dot(coords - plane_point, plane_normal)  
+        
+        # Split the point cloud into two separate arrays based on the sign of the distance  
+        positive_points = points[distances >= -overlap_distance]  
+        negative_points = points[distances <= +overlap_distance]  
+        
+        # Calculate the buffer zone around the plane  
+        buffer_points = points[
+            np.logical_and(
+                distances >= -overlap_distance, 
+                distances <= +overlap_distance
+            )
+        ]  
+        
+        return positive_points, negative_points, buffer_points
 
 class ThreeDMatchFCGF(PairDataset):
     def __init__(

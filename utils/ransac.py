@@ -158,7 +158,7 @@ def ransac_match(
             T,
             ransac_params.max_corresponding_dist, ransac_params.max_refine_num
         )
-        if candidate_evaluation.fitness > best_fitness:
+        if candidate_evaluation.fitness >= best_fitness:
             best_fitness = candidate_evaluation.fitness
             initial_T = T
 

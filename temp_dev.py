@@ -187,8 +187,13 @@ if __name__ == "__main__":
         points2_o3d.paint_uniform_color([0.0, 1.0, 1.0])
         points1 = utils.o3d2npy(points1_o3d)
         points2 = utils.o3d2npy(points2_o3d)
-        points1[:,3:6] *= 255.0
-        points2[:,3:6] *= 255.0
+        points1[:,3:6] *= 255.0 # transform color range to ply valid range
+        points2[:,3:6] *= 255.0 # transform color range to ply valid range
+        utils.fuse2frags(
+            utils.apply_transformation(points1, np.eye(4)),
+            points2, 
+            utils.make_ply_vtx_type(True, True), args.out_root, "orgl_contrastive.ply"
+        )
         utils.fuse2frags(
             utils.apply_transformation(points1, T_pred),
             points2, 
