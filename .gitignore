@@ -4,7 +4,8 @@
 *.a
 *.so
 *.lib
+__pycache__/
 /out
 /runs
 /results
-__pycache__/
+/statistic

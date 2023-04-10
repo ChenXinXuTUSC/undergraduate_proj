@@ -1,25 +1,7 @@
 import numpy as np
 import utils
 
-import collections
-#RANSAC configuration:
-RANSACCONF = collections.namedtuple(
-    "RANSACCONF",
-    [
-        "max_workers",
-        "num_samples",
-        "max_corresponding_dist", 'max_iter_num', 'max_valid_num', 'max_refine_num'
-    ]
-)
-# fast pruning algorithm configuration:
-CHECKRCONF = collections.namedtuple(
-    "CHECKRCONF",
-    [
-        "max_corresponding_dist",
-        "max_mnn_dist_ratio", 
-        "normal_angle_threshold"
-    ]
-)
+from easydict import EasyDict as edict
 
 class RansacRegister:
     '''
@@ -96,18 +78,18 @@ class RansacRegister:
                 state_dict_path=extracter_weights
             )
         
-        self.ransac_params = RANSACCONF(
-            max_workers=ransac_workers_num, num_samples=ransac_samples_num,
-            max_corresponding_dist=voxel_size * ransac_corrdist_factor,
-            max_iter_num=ransac_iter_num,
-            max_valid_num=ransac_vald_num,
-            max_refine_num=ransac_rfne_num
-        )
-        self.checkr_params=CHECKRCONF(
-            max_corresponding_dist=voxel_size * checkr_corrdist_factor,
-            max_mnn_dist_ratio=checkr_mutldist_factor,
-            normal_angle_threshold=checkr_normdegr_thresh
-        )
+        self.ransac_params = edict({
+            "max_workers": ransac_workers_num, "num_samples":ransac_samples_num,
+            "max_corresponding_dist":voxel_size * ransac_corrdist_factor,
+            "max_iter_num":ransac_iter_num,
+            "max_valid_num":ransac_vald_num,
+            "max_refine_num":ransac_rfne_num
+        })
+        self.checkr_params=edict({
+            "max_corresponding_dist":voxel_size * checkr_corrdist_factor,
+            "max_mnn_dist_ratio":checkr_mutldist_factor,
+            "normal_angle_threshold":checkr_normdegr_thresh
+        })
     
     # step1: voxel downsample
     def downsample(self, coords: np.ndarray):
@@ -133,20 +115,20 @@ class RansacRegister:
         self,
         downsampled_coords1: np.ndarray,
         downsampled_coords2: np.ndarray,
-        keyptsdict1,
-        keyptsdict2,
+        keyptsidx1,
+        keyptsidx2,
         feats1: np.ndarray,
         feats2: np.ndarray,
         T_gdth: np.ndarray=None
     ):
         from utils import ransac
-        keyfeats1 = feats1[keyptsdict1["id"].values].T
-        keyfeats2 = feats2[keyptsdict2["id"].values].T
+        keyfeats1 = feats1[keyptsidx1].T
+        keyfeats2 = feats2[keyptsidx2].T
         # use feature descriptor of key points to compute matches
         matches = ransac.init_matches(keyfeats1, keyfeats2)
         
-        keycoords1 = downsampled_coords1[keyptsdict1["id"].values]
-        keycoords2 = downsampled_coords2[keyptsdict2["id"].values]
+        keycoords1 = downsampled_coords1[keyptsidx1]
+        keycoords2 = downsampled_coords2[keyptsidx2]
         if T_gdth is not None:
             correct = utils.ground_truth_matches(matches, keycoords1, keycoords2, self.voxel_size * 2.5, T_gdth) # 上帝视角
             correct_valid_num = correct.astype(np.int32).sum()
@@ -181,7 +163,6 @@ class RansacRegister:
             num_finetune_steps
         )
 
-    
     def register(self, pcd1: np.ndarray, pcd2: np.ndarray, T_gdth: np.ndarray=None):
         '''predict the original transformation T[R,t]
         
@@ -219,7 +200,7 @@ class RansacRegister:
         # step4: coarse registration
         coarse_registration = self.coarse_registration(
             downsampled_coords1, downsampled_coords2,
-            keyptsdict1, keyptsdict2,
+            keyptsdict1["id"].values, keyptsdict2["id"].values,
             feats1, feats2,
             T_gdth
         )
@@ -228,7 +209,7 @@ class RansacRegister:
         fine_registrartion = self.fine_registrartion(
             downsampled_coords1, downsampled_coords2,
             coarse_registration,
-            100
+            25
         )
         
         return fine_registrartion

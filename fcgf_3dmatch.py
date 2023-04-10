@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import collections
 import open3d as o3d
 from easydict import EasyDict as edict
 
@@ -25,25 +24,6 @@ import torch
 #   step5.3: repeat step5.2 until error converge
 # step6: ICP optimized transformation [R,t]
 
-#RANSAC configuration:
-RANSACCONF = collections.namedtuple(
-    "RANSACCONF",
-    [
-        "max_workers",
-        "num_samples",
-        "max_corresponding_dist", 'max_iter_num', 'max_valid_num', 'max_refine_num'
-    ]
-)
-# fast pruning algorithm configuration:
-CHECKRCONF = collections.namedtuple(
-    "CHECKRCONF",
-    [
-        "max_corresponding_dist",
-        "max_mnn_dist_ratio", 
-        "normal_angle_threshold"
-    ]
-)
-
 if __name__ == "__main__":
     args = edict(vars(config.args))
     
@@ -59,7 +39,6 @@ if __name__ == "__main__":
         augdist=4.0,
         args=args
     )
-    
 
     model_conf = torch.load(args.state_dict)["config"]
     model_params = torch.load(args.state_dict)["state_dict"]
@@ -90,8 +69,8 @@ if __name__ == "__main__":
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = utils.voxel_down_sample_gpt(points2, args.ICP_radius)
 
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(downsampled_coords1, args.ICP_radius * 0.975)
-        keyptsdict2 = utils.iss_detect(downsampled_coords2, args.ICP_radius * 0.975)
+        keyptsdict1 = utils.iss_detect(downsampled_coords1, args.ICP_radius * 0.95)
+        keyptsdict2 = utils.iss_detect(downsampled_coords2, args.ICP_radius * 0.95)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
@@ -131,16 +110,16 @@ if __name__ == "__main__":
         initial_ransac = utils.ransac_match(
             keypts1, keypts2,
             keyfcgfs1, keyfcgfs2,
-            ransac_params=RANSACCONF(
-                max_workers=4, num_samples=4,
-                max_corresponding_dist=args.ICP_radius*2.0,
-                max_iter_num=2000, max_valid_num=100, max_refine_num=30
-            ),
-            checkr_params=CHECKRCONF(
-                max_corresponding_dist=args.ICP_radius*2.0,
-                max_mnn_dist_ratio=0.85,
-                normal_angle_threshold=None
-            ),
+            ransac_params=edict({
+                "max_workers":4, "num_samples":4,
+                "max_corresponding_dist":args.ICP_radius*2.0,
+                "max_iter_num":2000, "max_valid_num":100, "max_refine_num":30
+            }),
+            checkr_params=edict({
+                "max_corresponding_dist":args.ICP_radius*2.0,
+                "max_mnn_dist_ratio":0.85,
+                "normal_angle_threshold":None
+            }),
             matches=matches
         )
 
@@ -154,7 +133,7 @@ if __name__ == "__main__":
             downsampled_coords1, downsampled_coords2,
             o3d.geometry.KDTreeFlann(utils.npy2o3d(downsampled_coords2)), 
             initial_ransac.transformation, args.ICP_radius,
-            10
+            25
         )
         T_pred = final_result.transformation
 
@@ -173,5 +152,5 @@ if __name__ == "__main__":
             T_gdth, T_pred, gdth_matches
         )
         utils.log_info(f"finish processing {sample_name}")
-        break # only for test
+        # break # only for test
 

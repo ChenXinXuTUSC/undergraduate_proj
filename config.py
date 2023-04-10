@@ -1,12 +1,17 @@
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--data_root", type=str, required=True, help="path to 3DMatach-FCGF dataset")
-parser.add_argument("--data_type", type=str, required=True, help="ModelNet40Dense or 3DMatchFCGF")
+parser.add_argument("--data_root", type=str, required=True, help="path to dataset")
+parser.add_argument("--data_type", type=str, required=True, help="ModelNet40Dense or 3DMatchFCGF or KITTI odometry")
 parser.add_argument("--out_root", type=str, default="./results", help="dir to store the registration results")
-parser.add_argument("--ICP_radius", type=float, required=True, help="radius for down sample and ICP registration")
-# dataset related options
 
+# register model configurations
+parser.add_argument("--voxel_size", type=float, required=True, help="voxel size for down sample and ICP registration")
+parser.add_argument("--key_radius_factor", type=float, default=1.0, help="scale factor on voxel size for key point detection")
+parser.add_argument("--extracter_type", type=str, default="FPFH", help="feature extracter model class name")
+parser.add_argument("--extracter_weights", type=str, default="", help="/path/to/pth is needed when extracter is FCGF")
+
+# dataset related configurations
 # modelnet40
 parser.add_argument("--classes", type=str, default="", help="model classes seperated by space, e.g., 'a b c d...'")
 parser.add_argument("--partition", type=float, default=0.25, help="whether to partition point cloud into two parts or not")

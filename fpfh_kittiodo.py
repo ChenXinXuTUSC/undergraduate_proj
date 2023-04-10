@@ -1,6 +1,4 @@
-import os
 import numpy as np
-import collections
 import open3d as o3d
 from easydict import EasyDict as edict
 
@@ -20,25 +18,6 @@ from utils import icp
 #   step5.2: select n(> 3) pairs to solve the transformation R and t
 #   step5.3: repeat step5.2 until error converge
 # step6: ICP optimized transformation [R,t]
-
-#RANSAC configuration:
-RANSACCONF = collections.namedtuple(
-    "RANSACCONF",
-    [
-        "max_workers",
-        "num_samples",
-        "max_corresponding_dist", 'max_iter_num', 'max_valid_num', 'max_refine_num'
-    ]
-)
-# fast pruning algorithm configuration:
-CHECKRCONF = collections.namedtuple(
-    "CHECKRCONF",
-    [
-        "max_corresponding_dist",
-        "max_mnn_dist_ratio", 
-        "normal_angle_threshold"
-    ]
-)
 
 if __name__ == "__main__":
     args = edict(vars(config.args))
@@ -97,16 +76,16 @@ if __name__ == "__main__":
         initial_ransac = utils.ransac_match(
             keypts1, keypts2,
             keyfpfhs1, keyfpfhs2,
-            ransac_params=RANSACCONF(
-                max_workers=4, num_samples=4,
-                max_corresponding_dist=args.ICP_radius*2.5,
-                max_iter_num=2000, max_valid_num=100, max_refine_num=30
-            ),
-            checkr_params=CHECKRCONF(
-                max_corresponding_dist=args.ICP_radius*2.5,
-                max_mnn_dist_ratio=0.50,
-                normal_angle_threshold=None
-            ),
+            ransac_params=edict({
+                "max_workers":4, "num_samples":4,
+                "max_corresponding_dist":args.ICP_radius*2.0,
+                "max_iter_num":2000, "max_valid_num":100, "max_refine_num":30
+            }),
+            checkr_params=edict({
+                "max_corresponding_dist":args.ICP_radius*2.0,
+                "max_mnn_dist_ratio":0.85,
+                "normal_angle_threshold":None
+            }),
             matches=matches
         )
 

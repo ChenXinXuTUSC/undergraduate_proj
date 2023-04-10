@@ -222,7 +222,7 @@ if __name__ == "__main__":
         utils.log_info(f"finish processing {sample_name}")
         break # only for test
 
-import json
-metrics = json.dumps(statistics, sort_keys=True, indent=4, separators=(',', ': '))
-with open("./fpfh_modelnet40_metrics.json", 'w') as f:
-    f.write(metrics)
+# import json
+# metrics = json.dumps(statistics, sort_keys=True, indent=4, separators=(',', ': '))
+# with open("./fpfh_modelnet40_metrics.json", 'w') as f:
+#     f.write(metrics)
