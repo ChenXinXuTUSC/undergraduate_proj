@@ -31,7 +31,7 @@ if __name__ == "__main__":
     dataloader = available_datasets[args.data_type](
         root=args.data_root,
         shuffle=True,
-        augment=True,
+        augment=False,
         augdgre=30.0,
         augdist=4.0,
         args=args
@@ -56,9 +56,11 @@ if __name__ == "__main__":
         utils.log_info(f"processing {sample_name}")
         points1_o3d = utils.npy2o3d(points1)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))
+        points1_o3d.paint_uniform_color([0.0, 0.4, 0.4])
         points1 = utils.o3d2npy(points1_o3d)
         points2_o3d = utils.npy2o3d(points2)
         points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))
+        points2_o3d.paint_uniform_color([0.4, 0.4, 0.0])
         points2 = utils.o3d2npy(points2_o3d)
 
         # step1: voxel downsample
@@ -103,53 +105,31 @@ if __name__ == "__main__":
         utils.log_info(f"gdth/init: {correct_valid_num:.2f}/{correct_total_num:.2f}={correct_valid_num/correct_total_num:.2f}")
 
         # 将对匹配对索引从关键点集合映射回原点云集合
-        totl_matches = np.array([keyptsindices1[matches[:,0]], keyptsindices2[matches[:,1]]]).T
+        totl_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T
         gdth_matches = totl_matches[correct]
 
-        initial_ransac = utils.ransac_match(
-            keypts1, keypts2,
-            keyfcgfs1, keyfcgfs2,
-            ransac_params=edict({
-                "max_workers":4, "num_samples":4,
-                "max_corresponding_dist":args.voxel_size*2.0,
-                "max_iter_num":2000, "max_valid_num":100, "max_refine_num":30
-            }),
-            checkr_params=edict({
-                "max_corresponding_dist":args.voxel_size*2.0,
-                "max_mnn_dist_ratio":0.85,
-                "normal_angle_threshold":None
-            }),
-            matches=matches
-        )
-
-        if len(initial_ransac.correspondence_set) == 0:
-            utils.log_warn(sample_name, "failed to recover the transformation")
-            continue
-        else:
-            utils.log_info("correspondence set num:", len(initial_ransac.correspondence_set))
+        src_feat_indices = np.random.choice(gdth_matches[:, 0], size=3)
+        dst_feat_indices = []
+        search_tree = o3d.geometry.KDTreeFlann(fcgfs2.T)
+        for feat_idx in src_feat_indices:
+            _, dst_idx, _ = search_tree.search_knn_vector_xd(fcgfs1[feat_idx].T, 100)
+            dst_feat_indices.append(dst_idx)
+            
         
-        final_result = icp.ICP_exact_match(
+        downsampled_coords1[:, 3:6] *= 255.0 # transform from open3d[0.0, 1.0] to ply[0, 255]
+        downsampled_coords2[:, 3:6] *= 255.0 # transform from open3d[0.0, 1.0] to ply[0, 255]
+        colors = [np.array([255,10,10]), np.array([10,255,10]), np.array([10,100,255])]
+        for src_idx, dst_idx, color in zip(src_feat_indices, dst_feat_indices, colors):
+            downsampled_coords1[src_idx, 3:6] = color
+            downsampled_coords2[dst_idx, 3:6] = color * 0.5
+            
+        
+        utils.fuse2frags(
             downsampled_coords1, downsampled_coords2,
-            o3d.geometry.KDTreeFlann(utils.npy2o3d(downsampled_coords2)), 
-            initial_ransac.transformation, args.voxel_size,
-            25
-        )
-        T_pred = final_result.transformation
-
-        utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
-        utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
-        # ============================= end of registration =============================
-
-
-
-        # do some visualization works
-        utils.dump_registration_result(
-            args.out_root, sample_name,
-            points1, points2,
-            downsampled_coords1, keyptsindices1,
-            downsampled_coords2, keyptsindices2,
-            T_gdth, T_pred, gdth_matches
+            utils.make_ply_vtx_type(True, True),
+            out_dir=args.out_root,
+            out_name="feature_query.ply"
         )
         utils.log_info(f"finish processing {sample_name}")
-        # break # only for test
+        break # only for test
 

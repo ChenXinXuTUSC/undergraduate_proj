@@ -19,7 +19,7 @@ def init_matches(srcfds:np.ndarray, dstfds:np.ndarray):
         srcfds = srcfds.detach().numpy()
     if type(dstfds) == torch.Tensor:
         dstfds = dstfds.detach().numpy()
-    fpfh_search_tree = o3d.geometry.KDTreeFlann(dstfds)
+    search_tree = o3d.geometry.KDTreeFlann(dstfds)
     num_srcfds = srcfds.shape[1]
     rough_matches = []
     for col_idx in range(num_srcfds):
@@ -28,7 +28,7 @@ def init_matches(srcfds:np.ndarray, dstfds:np.ndarray):
         # 时指定了向量的长度，那么只需要输入向量的元素列表而无需关心是列向量
         # 还是行向量，但如果是使用x-dimension的话，似乎必须使用列向量？但调
         # 试过后发现好像也不用列向量啊？？？
-        _, dst_idx, _ = fpfh_search_tree.search_knn_vector_xd(query, 1)
+        _, dst_idx, _ = search_tree.search_knn_vector_xd(query, 1)
         rough_matches.append([col_idx, dst_idx[0]])
     
     return np.asarray(rough_matches)
