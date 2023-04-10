@@ -78,7 +78,7 @@ def npy2o3d(points: np.ndarray):
     if points.shape[1] >= 6:
         # for rgb colors
         points_o3d.colors = o3d.utility.Vector3dVector(points[:, 3:6])
-    if points.shape[1]>= 9:
+    if points.shape[1] >= 9:
         # for uvw normals
         points_o3d.normals = o3d.utility.Vector3dVector(points[:, 6:9])
     
@@ -274,7 +274,7 @@ def dump1frag(
     ):
     points = np.array([tuple(line) for line in points], dtype=ply_vertex_type)
     if not os.path.exists(out_dir):
-        os.makedirs(out_dir, mode=0o774)
+        os.makedirs(out_dir, mode=0o755)
     PlyData(
         [
             PlyElement.describe(points, "vertex", comments="vertices")
@@ -290,6 +290,8 @@ def fuse2frags(
     points1_plyformat = np.array([tuple(line) for line in points1], dtype=ply_vertex_type)
     points2_plyformat = np.array([tuple(line) for line in points2], dtype=ply_vertex_type)
     points = np.concatenate([points1_plyformat, points2_plyformat], axis=0)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir, mode=0o755)
     PlyData(
         [
             PlyElement.describe(points, "vertex", comments=["vertices"])
@@ -336,6 +338,9 @@ def fuse2frags_with_matches(
         colors *= 255.0
     edges = np.concatenate([matches, colors], axis=1)
     edges = np.array([tuple(line) for line in edges], dtype=ply_line_type)
+    
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir, mode=0o755)
     PlyData(
         [
             PlyElement.describe(points, "vertex", comments=["vertices"]),
@@ -488,3 +493,42 @@ def principle_K_components(samples: np.ndarray, k: int):
     eigvecs = eigvecs[:,eigvals.argsort()[::-1]][:, :k] # flip into descend order
 
     return eigvecs
+
+def dump_registration_result(
+    out_dir: str,
+    out_name: str,
+    points1: np.ndarray,
+    points2: np.ndarray,
+    downsampled_coords1: np.ndarray, keyptsidx1: np.ndarray,
+    downsampled_coords2: np.ndarray, keyptsidx2: np.ndarray,
+    T_gdth,
+    T_pred,
+    gdth_matches=None
+):
+    # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
+    downsampled_coords1[keyptsidx1, 3:6] = np.array([255, 0, 0])
+    downsampled_coords2[keyptsidx2, 3:6] = np.array([0, 255, 0])
+    # show matches
+    if gdth_matches is not None:
+        fuse2frags_with_matches(
+            apply_transformation(downsampled_coords1, T_pred), downsampled_coords2, 
+            gdth_matches, make_ply_vtx_type(True, True), 
+            ply_edg_i1i2rgb,
+            f"{out_dir}/matches", f"{out_name}.ply"
+        )
+    
+    # contrastive comparison
+    points1[:,3:6] = [0, 255, 255]
+    points2[:,3:6] = [255, 255, 0]
+    fuse2frags(
+        apply_transformation(points1, np.eye(4)), points2, 
+        make_ply_vtx_type(True, True), f"{out_dir}/orgl_contrastive", f"{out_name}.ply"
+    )
+    fuse2frags(
+        apply_transformation(points1, T_pred), points2, 
+        make_ply_vtx_type(True, True), f"{out_dir}/pred_contrastive", f"{out_name}.ply"
+    )
+    fuse2frags(
+        apply_transformation(points1, T_gdth), points2, 
+        make_ply_vtx_type(True, True), f"{out_dir}/gdth_contrastive", f"{out_name}.ply"
+    )

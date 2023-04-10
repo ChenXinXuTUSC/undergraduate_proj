@@ -42,12 +42,13 @@ class ModelNet40Dense(PairDataset):
         ) -> None:
         super().__init__(root, shuffle, augment, augdgre, augdist)
         self.files = []
-        self.classes = None
+        self.classes = []
         self.partition = None
 
         if args is not None:
             self.classes = [cls.strip() for cls in args.classes.split()]
-            self.partition = args.partition
+            if args.partition > 0.05:
+                self.partition = args.partition
         mdirs = sorted([d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))])
         if len(self.classes) > 0:
             mdirs = [mdir for mdir in mdirs if mdir in self.classes]
@@ -151,13 +152,17 @@ class ThreeDMatchFCGF(PairDataset):
         self.files = []
         self.overlap_dn = 0.0
         self.overlap_up = 1.0
+        self.rooms_included = []
         
         if args is not None:
+            self.rooms_included = [room.strip() for room in args.rooms.split()]
             self.overlap_dn = args.overlap_dn
             self.overlap_up = args.overlap_up
         # npzs = [os.path.join(root, "npz", file) for file in sorted(os.listdir(os.path.join(root, "npz")))]
-        txts = [os.path.join(self.root, "txt", file) for file in sorted(os.listdir(os.path.join(self.root, "txt")))]
+        txts = [file for file in sorted(os.listdir(os.path.join(self.root, "txt")))]
         for txt in tqdm(txts, total=len(txts), ncols=100, desc=self.__class__.__name__):
+            if len(self.rooms_included) > 0 and txt.split("@")[0] not in self.rooms_included:
+                continue
             with open(os.path.join(self.root, "txt", txt), 'r') as f:
                 lines = f.readlines()
                 lines = [line.strip().split(' ') for line in lines]

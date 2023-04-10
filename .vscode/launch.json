@@ -4,6 +4,7 @@
     // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        // current file
         {
             "name": "当前文件",
             "type": "python",
@@ -24,6 +25,7 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
+        // FPFH modelnet40
         {
             "name": "FPFH modelnet40",
             "type": "python",
@@ -36,14 +38,15 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/fpfh_modelnet40",
                 "--ICP_radius", "0.01",
-                "--classes", "airplane guitar",
-                "--partition", "0.05",
+                "--classes", "flower_pot",
+                "--partition", "0.00",
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
+        // FPFH 3DMatch
         {
             "name": "FPFH 3DMatch",
             "type": "python",
@@ -64,6 +67,7 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
+        // FPFH KITTIOdo
         {
             "name": "FPFH KITTIOdo",
             "type": "python",
@@ -86,6 +90,7 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
+        // FCGF 3DMatch
         {
             "name": "FCGF 3DMatch",
             "type": "python",
@@ -96,6 +101,7 @@
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--rooms", "7-scenes-redkitchen",
                 "--out_root", "${workspaceFolder}/results/fcgf_3dmatch",
                 "--ICP_radius", "0.05",
                 "--overlap_dn", "0.3",
@@ -104,10 +110,11 @@
                 "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
+        // iss test
         {
             "name": "iss test",
             "type": "python",

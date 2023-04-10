@@ -13,6 +13,7 @@ parser.add_argument("--partition", type=float, default=0.25, help="whether to pa
 # 3DMatch
 parser.add_argument("--overlap_up", type=float, default=0.3, help="upper threshold of overlap ratio of the sample pair")
 parser.add_argument("--overlap_dn", type=float, default=0.5, help="lower thresholf of overlap ratio of the sample pair")
+parser.add_argument("--rooms", type=str, default="", help="room names seperated by space, e.g., 'a b c d...'")
 # KITTI odometry
 parser.add_argument("--step_size", type=int, help="interleave between two frames")
 parser.add_argument("--voxel_size", type=float, help="voxel size for down sampling")

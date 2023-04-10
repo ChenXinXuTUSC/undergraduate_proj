@@ -49,5 +49,5 @@ if __name__ == "__main__":
         
 
 
-        utils.dump1frag(points1, utils.ply_vertex_type, out_dir="./samples/pca_analysis_visual", out_name="output.ply")
+        utils.dump1frag(points1, utils.ply_vertex_type, out_dir="./results/pca_analysis_visual", out_name="output.ply")
         break

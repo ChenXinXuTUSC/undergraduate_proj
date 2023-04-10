@@ -56,7 +56,7 @@ def ICP_exact_match(
             T = solve_procrustes(P, Q)
             curr_res = o3d.pipelines.registration.evaluate_registration(npy2o3d(srcpts), npy2o3d(dstpts), max_corresponding_dist, T)
             if early_terminate(curr_res, prev_res):
-                tqdm.write(log_info("early stopping the RANSAC ICP procedure", quiet=True))
+                # tqdm.write(log_info("early stopping the RANSAC ICP procedure", quiet=True))
                 break
     return curr_res
 
