@@ -9,7 +9,8 @@ parser.add_argument("--out_root", type=str, default="./results", help="dir to st
 parser.add_argument("--voxel_size", type=float, required=True, help="voxel size for down sample and ICP registration")
 parser.add_argument("--key_radius_factor", type=float, default=1.0, help="scale factor on voxel size for key point detection")
 parser.add_argument("--extracter_type", type=str, default="FPFH", help="feature extracter model class name")
-parser.add_argument("--extracter_weights", type=str, default="", help="/path/to/pth is needed when extracter is FCGF")
+parser.add_argument("--feat_model", type=str, help="class name of feature extraction model")
+parser.add_argument("--state_dict", type=str, help="path to the model state dict")
 
 # dataset related configurations
 # modelnet40
@@ -21,11 +22,9 @@ parser.add_argument("--overlap_dn", type=float, default=0.5, help="lower thresho
 parser.add_argument("--rooms", type=str, default="", help="room names seperated by space, e.g., 'a b c d...'")
 # KITTI odometry
 parser.add_argument("--step_size", type=int, help="interleave between two frames")
-parser.add_argument("--voxel_size", type=float, help="voxel size for down sampling")
+parser.add_argument("--prefilter_size", type=float, help="prefilter size for stereo vision point cloud fushion")
 parser.add_argument("--filter_radius", type=float, help="radius to filter outliers")
 parser.add_argument("--filter_mustnn", type=int,   help="must neighbours num to filter outliers")
 
 # MinkowskiEngine test
-parser.add_argument("--feat_model", type=str, help="class name of feature extraction model")
-parser.add_argument("--state_dict", type=str, help="path to the model state dict")
 args = parser.parse_args()

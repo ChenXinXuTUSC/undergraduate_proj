@@ -222,7 +222,7 @@ class KITTIOdometry(PairDataset):
         ) -> None:
         super().__init__(root, shuffle, augment, augdgre, augdist)
 
-        self.voxel_size = args.voxel_size
+        self.voxel_size = args.prefilter_size
         self.filter_radius = args.filter_radius
         self.filter_mustnn = args.filter_mustnn
 

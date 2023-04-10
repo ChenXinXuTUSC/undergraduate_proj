@@ -66,13 +66,14 @@ class RansacRegister:
         
         self.key_radius_factor = key_radius_factor
         
+        self.extracter = None
         extracter_class = featextracter.load_extracter(extracter_type)
-        if extracter_type == "FPFH":
+        if extracter_type == "FPFHFeatExtracter":
             self.extracter = extracter_class(
                 voxel_size * feat_radius_factor,
                 feat_neighbour_num
             )
-        elif extracter_type == "FCGF":
+        elif extracter_type == "FCGFFeatExtracter":
             self.extracter = extracter_class(
                 model_type="ResUNetBN2C",
                 state_dict_path=extracter_weights
@@ -102,7 +103,7 @@ class RansacRegister:
     
     # step2: detect keypoints
     def keypoints_detect(self, downsampled_coords: np.ndarray):
-        keyptsdict = utils.iss_detect(downsampled_coords, self.voxel_size * self.ISS_radius_factor)
+        keyptsdict = utils.iss_detect(downsampled_coords, self.voxel_size * self.key_radius_factor)
         return keyptsdict
     
     # step3: extract feature descriptors of all points
@@ -121,28 +122,32 @@ class RansacRegister:
         feats2: np.ndarray,
         T_gdth: np.ndarray=None
     ):
+        keycoords1 = downsampled_coords1[keyptsidx1]
+        keycoords2 = downsampled_coords2[keyptsidx2]
+        
         from utils import ransac
         keyfeats1 = feats1[keyptsidx1].T
         keyfeats2 = feats2[keyptsidx2].T
         # use feature descriptor of key points to compute matches
         matches = ransac.init_matches(keyfeats1, keyfeats2)
-        
-        keycoords1 = downsampled_coords1[keyptsidx1]
-        keycoords2 = downsampled_coords2[keyptsidx2]
+        totl_matches = np.array([keyptsidx1[matches[:,0]], keyptsidx2[matches[:,1]]]).T
+        gdth_matches = None
         if T_gdth is not None:
             correct = utils.ground_truth_matches(matches, keycoords1, keycoords2, self.voxel_size * 2.5, T_gdth) # 上帝视角
             correct_valid_num = correct.astype(np.int32).sum()
             correct_total_num = correct.shape[0]
             utils.log_info(f"gdth/init: {correct_valid_num:.2f}/{correct_total_num:.2f}={correct_valid_num/correct_total_num:.2f}")
+            gdth_matches = totl_matches[correct]
         
         coarse_registration = utils.ransac_match(
             keycoords1, keycoords2,
             keyfeats1, keyfeats2,
             ransac_params=self.ransac_params,
-            checkr_params=self.checkr_params
+            checkr_params=self.checkr_params,
+            matches=matches
         )
         
-        return coarse_registration
+        return coarse_registration, totl_matches, gdth_matches
     
     # step5: fine ransac registration
     def fine_registrartion(
@@ -156,7 +161,7 @@ class RansacRegister:
         import open3d as o3d
         return icp.ICP_exact_match(
             downsampled_coords1,
-            downsampled_coords1,
+            downsampled_coords2,
             o3d.geometry.KDTreeFlann(utils.npy2o3d(downsampled_coords2)),
             coarse_registration.transformation,
             self.voxel_size,
@@ -181,13 +186,13 @@ class RansacRegister:
         import copy
         # we don't need features other than coordinates
         if pcd1.shape[1] > 3:
-            pcd1 = copy.deepcopy(pcd1)[:,:3]
+            coords1 = copy.deepcopy(pcd1)[:,:3]
         if pcd2.shape[1] > 3:
-            pcd2 = copy.deepcopy(pcd2)[:,:3]
+            coords2 = copy.deepcopy(pcd2)[:,:3]
         
         # step1: voxel downsample
-        downsampled_coords1, voxelized_coords1, idx_dse2vox1 = self.downsample(pcd1)
-        downsampled_coords2, voxelized_coords2, idx_dse2vox2 = self.downsample(pcd2)
+        downsampled_coords1, voxelized_coords1, idx_dse2vox1 = self.downsample(coords1)
+        downsampled_coords2, voxelized_coords2, idx_dse2vox2 = self.downsample(coords2)
         
         # step2: detect iss key points
         keyptsdict1 = self.keypoints_detect(downsampled_coords1)
@@ -198,7 +203,7 @@ class RansacRegister:
         feats2 = self.extract_features(downsampled_coords2, voxelized_coords2)
         
         # step4: coarse registration
-        coarse_registration = self.coarse_registration(
+        coarse_registration, totl_matches, gdth_matches = self.coarse_registration(
             downsampled_coords1, downsampled_coords2,
             keyptsdict1["id"].values, keyptsdict2["id"].values,
             feats1, feats2,
@@ -212,4 +217,9 @@ class RansacRegister:
             25
         )
         
-        return fine_registrartion
+        return (
+            fine_registrartion,
+            pcd1[idx_dse2vox1], pcd2[idx_dse2vox2],
+            keyptsdict1, keyptsdict2,
+            totl_matches, gdth_matches
+        )

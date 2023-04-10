@@ -27,9 +27,6 @@ import torch
 
 if __name__ == "__main__":
     args = edict(vars(config.args))
-    
-    if not os.path.exists(args.out_root):
-        os.makedirs(args.out_root, mode=0o755)
 
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args.data_type](
@@ -45,6 +42,45 @@ if __name__ == "__main__":
         voxel_size=args.voxel_size,
         key_radius_factor=args.key_radius_factor,
         extracter_type=args.extracter_type,
-        extracter_weights=args.extracter_weights,
-        
+        extracter_weights=args.state_dict,
+        feat_radius_factor=args.voxel_size*2.0,
+        feat_neighbour_num=50,
+        ransac_workers_num=4,
+        ransac_samples_num=4,
+        ransac_corrdist_factor=2.0,
+        ransac_iter_num=10000,
+        ransac_vald_num=1000,
+        ransac_rfne_num=25,
+        checkr_corrdist_factor=2.0,
+        checkr_mutldist_factor=0.85,
+        checkr_normdegr_thresh=None
     )
+    
+    timer = utils.timer()
+    for points1, points2, T_gdth, sample_name in dataloader:
+        points1_o3d = utils.npy2o3d(points1)
+        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))
+        points1 = utils.o3d2npy(points1_o3d)
+        points2_o3d = utils.npy2o3d(points2)
+        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))
+        points2 = utils.o3d2npy(points2_o3d)
+        (
+            fine_registrartion,
+            downsampled_coords1, downsampled_coords2,
+            keyptsdict1, keyptsdict2,
+            totl_matches, gdth_matches
+        ) = register.register(points1, points2, T_gdth)
+        T_pred = fine_registrartion.transformation
+        utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
+        utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
+        
+        utils.dump_registration_result(
+            args.out_root, sample_name,
+            points1, points2,
+            downsampled_coords1, keyptsdict1["id"].values,
+            downsampled_coords2, keyptsdict2["id"].values,
+            T_gdth, T_pred,
+            gdth_matches
+        )
+
+        utils.log_info(f"sample: {sample_name}")
