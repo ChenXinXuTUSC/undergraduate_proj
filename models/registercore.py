@@ -13,6 +13,8 @@ class RansacRegister:
         voxel_size: float,
         # ISS key point detector
         key_radius_factor: float,
+        # matches filter
+        filter_weights: str,
         # FCGF and FPFH extracter
         extracter_type: str,
         extracter_weights: str,
@@ -223,3 +225,29 @@ class RansacRegister:
             keyptsdict1, keyptsdict2,
             totl_matches, gdth_matches
         )
+
+    # other utilities
+    def matches_filter(
+        self,
+        feats1: np.ndarray,
+        feats2: np.ndarray,
+        matches: np.ndarray,
+    ):
+        '''use contrastive model to filter matches
+        
+        params
+        -
+        * feats1: np.ndarray.
+            Features in shape(num, dimensions).
+        * feats2: np.ndarray.
+            Features in shape(num, dimensions).
+        * matches: np.ndarray.
+            Corresponding matching features indices in shape(num, 2)
+        
+        return
+        -
+        * matches: np.ndarray.
+            New filtered matches indices.
+        '''
+        
+        

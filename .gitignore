@@ -1,11 +1,14 @@
 *.ply
 *.pth
 *.out
+*.log
 *.a
 *.so
 *.lib
 __pycache__/
+/log
 /out
 /runs
 /results
 /statistic
+/data
