@@ -55,7 +55,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(classifier.parameters(), 1e-2)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     lossfn = models.metric.contrastive.ContrastiveLoss()
-    for epoch in range(1, 101):
+    for epoch in range(1, num_epochs + 1):
         for iter, (matches, labels) in tqdm(enumerate(train_loader), total=len(train_loader), ncols=100, desc=f"{utils.redd(f'train epoch {epoch:3d}/{num_epochs}')}"):
             matches = matches.to(device)
             labels = labels.to(device)

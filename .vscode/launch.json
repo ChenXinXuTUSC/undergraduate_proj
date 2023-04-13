@@ -24,7 +24,7 @@
                 "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
@@ -179,6 +179,22 @@
                 "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
-        }
+        },
+        // train identifier
+        {
+            "name": "train predictor",
+            "type": "python",
+            "request": "launch",
+            "program": "train_predictor.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
+        },
     ]
 }
