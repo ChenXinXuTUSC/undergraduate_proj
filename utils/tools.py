@@ -148,7 +148,7 @@ def transform_augment(points: np.ndarray, angle: float, dist: float):
     return points, rotmat, transd
 
 def build_random_transform(angle: float, dist: float):
-    rotation_angle = np.random.uniform() * (angle / 180.0) * np.pi # convert to pi
+    rotation_angle = (angle + 10.0 * (np.random.uniform() - 0.5)) / 180.0 * np.pi # convert to pi
     cosval = np.cos(rotation_angle)
     sinval = np.sin(rotation_angle)
     rotmat = np.array(

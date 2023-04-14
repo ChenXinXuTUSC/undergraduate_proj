@@ -148,16 +148,18 @@
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--rooms", "7-scenes-redkitchen",
-                "--out_root", "${workspaceFolder}/results/fcgf_3dmatch",
-                "--voxel_size", "0.05",
+                // "--rooms", "7-scenes-redkitchen",
+                "--out_root", "${workspaceFolder}/results/inlier_proposal",
+                "--voxel_size", "0.025",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
                 
                 "--extracter_type", "FCGFFeatExtracter",
                 "--feat_model", "ResUNetBN2C",
                 "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
-                "--key_radius_factor", "0.94",
+                "--mapper_conf", "${workspaceFolder}/models/mapper.yaml",
+                "--predictor_conf", "${workspaceFolder}/models/predictor.yaml",
+                "--key_radius_factor", "1.00",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",

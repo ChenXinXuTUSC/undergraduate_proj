@@ -1,8 +1,10 @@
+import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from . import block
+
+import utils
 
 class Predictor(nn.Module):
     '''
@@ -15,14 +17,35 @@ class Predictor(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        unet_channels: list
+        mid_channels: list,
+        weight: str=None
     ) -> None:
         super().__init__()
         
-        self.unet = block.UnetBlock1d(in_channels, unet_channels)
-        self.convo = nn.Conv1d(unet_channels[-1], out_channels, 1, 1, bias=True)
+        self.unet = block.UnetBlock1d(in_channels, mid_channels)
+        self.convo = nn.Conv1d(mid_channels[-1], out_channels, 1, 1, bias=True)
         self.normo = nn.BatchNorm1d(out_channels)
-        
+
+        if os.path.exists(weight):
+            try:
+                self.load_state_dict(torch.load(weight))
+            except Exception as e:
+                utils.log_warn("fail to load weight for predictor:", e)
+            utils.log_info("successfully load state dict for predictor")
+    
+    @classmethod
+    def conf_init(cls, conf_file: str):
+        with open(conf_file, 'r') as f:
+            try:
+                import yaml
+                pred_conf = yaml.safe_load(f)
+                in_channels = pred_conf["in_channels"]
+                out_channels = pred_conf["out_channels"]
+                mid_channels = pred_conf["mid_channels"]
+                weight = pred_conf["weight"]
+            except Exception as e:
+                raise Exception("conf load error:", e)
+        return cls(in_channels, out_channels, mid_channels, weight)
     
     def forward(self, x: torch.Tensor):
         y = self.unet(x)

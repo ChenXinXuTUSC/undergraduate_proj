@@ -11,6 +11,8 @@ parser.add_argument("--key_radius_factor", type=float, default=1.0, help="scale 
 parser.add_argument("--extracter_type", type=str, default="FPFH", help="feature extracter model class name")
 parser.add_argument("--feat_model", type=str, help="class name of feature extraction model")
 parser.add_argument("--state_dict", type=str, help="path to the model state dict")
+parser.add_argument("--mapper_conf", type=str, default="", help="path to mapper conf yaml")
+parser.add_argument("--predictor_conf", type=str, default="", help="path to predictor conf yaml")
 
 # dataset related configurations
 # modelnet40

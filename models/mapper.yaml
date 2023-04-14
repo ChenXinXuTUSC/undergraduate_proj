@@ -1,0 +1,4 @@
+in_channels: 64
+out_channels: 6
+mid_channels: [128, 256, 128, 64]
+weight: "/home/hm/fuguiduo/code/ransac_registration/log/Mapper/2023-04-14_06:43:44/weights/100.pth"

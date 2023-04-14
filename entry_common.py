@@ -45,15 +45,18 @@ if __name__ == "__main__":
         extracter_weights=args.state_dict,
         feat_radius_factor=args.voxel_size*2.0,
         feat_neighbour_num=50,
+        mapper_conf=args.mapper_conf,
+        predictor_conf=args.predictor_conf,
         ransac_workers_num=4,
-        ransac_samples_num=4,
+        ransac_samples_num=5,
         ransac_corrdist_factor=2.0,
         ransac_iter_num=10000,
         ransac_vald_num=1000,
         ransac_rfne_num=25,
         checkr_corrdist_factor=2.0,
         checkr_mutldist_factor=0.85,
-        checkr_normdegr_thresh=None
+        checkr_normdegr_thresh=None,
+        
     )
     
     timer = utils.timer()
@@ -75,7 +78,7 @@ if __name__ == "__main__":
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
         
         utils.dump_registration_result(
-            args.out_root, sample_name,
+            args.out_root, "output",
             points1, points2,
             downsampled_coords1, keyptsdict1["id"].values,
             downsampled_coords2, keyptsdict2["id"].values,

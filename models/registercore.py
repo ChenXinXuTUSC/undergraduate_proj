@@ -1,7 +1,44 @@
+import os
 import numpy as np
-import utils
+import torch
 
 from easydict import EasyDict as edict
+
+import utils
+
+from . import inlier_proposal
+
+def snapshot(
+        x: np.ndarray,
+        y: np.ndarray,
+        d: int,
+        title: str="snapshot",
+        out_dir: str=".",
+        out_name: str="snapshot"
+    ):
+    main_axes = utils.principle_K_components(x, d)
+    x = np.dot(x, main_axes)
+    import matplotlib.pyplot as plt
+    import matplotlib
+    
+    cmap = matplotlib.colormaps["plasma"]
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
+    fig = plt.figure(figsize=plt.figaspect(0.4))
+    ax = fig.add_subplot(1, 1, 1)
+    pidx = np.nonzero(y)[0]
+    nidx = np.nonzero(~y)[0]
+    if d == 2:
+        pposes = (x[pidx, 0], x[pidx, 1])
+        nposes = (x[nidx, 0], x[nidx, 1])
+    elif d == 3:
+        pposes = (x[pidx, 0], x[pidx, 1], x[pidx, 2])
+        nposes = (x[nidx, 0], x[nidx, 1], x[nidx, 2])
+    ax.scatter(*pposes, color=cmap(norm(y[pidx])), label=1)
+    ax.scatter(*nposes, color=cmap(norm(y[nidx])), label=0)
+    ax.title.set_text(title)
+    ax.legend(loc="upper right")
+    
+    plt.savefig(f"{out_dir}/{out_name}.jpg")
 
 class RansacRegister:
     '''
@@ -13,13 +50,14 @@ class RansacRegister:
         voxel_size: float,
         # ISS key point detector
         key_radius_factor: float,
-        # matches filter
-        filter_weights: str,
         # FCGF and FPFH extracter
         extracter_type: str,
         extracter_weights: str,
         feat_radius_factor: float,
         feat_neighbour_num: int,
+        # matches filter
+        mapper_conf: str,
+        predictor_conf: str,
         # ransac registration
         ransac_workers_num: int,
         ransac_samples_num: int,
@@ -93,7 +131,23 @@ class RansacRegister:
             "max_mnn_dist_ratio":checkr_mutldist_factor,
             "normal_angle_threshold":checkr_normdegr_thresh
         })
-    
+
+        # filter configuration
+        self.mapper = None
+        self.predictor = None
+        self.use_filter = False
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if os.path.exists(mapper_conf):
+            self.mapper = inlier_proposal.mapper.Mapper.conf_init(mapper_conf)
+            self.mapper.to(self.device)
+            self.mapper.eval()
+        if os.path.exists(predictor_conf):
+            self.predictor = inlier_proposal.predictor.Predictor.conf_init(predictor_conf)
+            self.predictor.to(self.device)
+            self.predictor.eval()
+        if self.mapper is not None and self.predictor is not None:
+            self.use_filter = True
+        
     # step1: voxel downsample
     def downsample(self, coords: np.ndarray):
         downsampled_coords, voxelized_coords, idx_dse2vox = utils.voxel_down_sample_gpt(
@@ -128,18 +182,26 @@ class RansacRegister:
         keycoords2 = downsampled_coords2[keyptsidx2]
         
         from utils import ransac
-        keyfeats1 = feats1[keyptsidx1].T
-        keyfeats2 = feats2[keyptsidx2].T
+        keyfeats1 = feats1[keyptsidx1]
+        keyfeats2 = feats2[keyptsidx2]
         # use feature descriptor of key points to compute matches
-        matches = ransac.init_matches(keyfeats1, keyfeats2)
+        matches = ransac.init_matches(keyfeats1.T, keyfeats2.T)
         totl_matches = np.array([keyptsidx1[matches[:,0]], keyptsidx2[matches[:,1]]]).T
         gdth_matches = None
         if T_gdth is not None:
             correct = utils.ground_truth_matches(matches, keycoords1, keycoords2, self.voxel_size * 2.5, T_gdth) # 上帝视角
             correct_valid_num = correct.astype(np.int32).sum()
             correct_total_num = correct.shape[0]
-            utils.log_info(f"gdth/init: {correct_valid_num:.2f}/{correct_total_num:.2f}={correct_valid_num/correct_total_num:.2f}")
+            utils.log_info(f"gdth/init: {correct_valid_num:d}/{correct_total_num:d}={correct_valid_num/correct_total_num:.3f}")
             gdth_matches = totl_matches[correct]
+        
+        if self.use_filter:
+            matches, predicted_mask, manifold_coords = self.matches_filter(keyfeats1, keyfeats2, matches)
+            snapshot(manifold_coords, correct,        d=2, out_name="gdth")
+            snapshot(manifold_coords, predicted_mask, d=2, out_name="pred")
+            correct_valid_num = np.logical_and(correct, predicted_mask).sum()
+            correct_total_num = matches.shape[0]
+            utils.log_dbug(f"gdth/pred: {correct_valid_num:d}/{correct_total_num:d}={correct_valid_num/correct_total_num:.3f}")
         
         coarse_registration = utils.ransac_match(
             keycoords1, keycoords2,
@@ -216,7 +278,7 @@ class RansacRegister:
         fine_registrartion = self.fine_registrartion(
             downsampled_coords1, downsampled_coords2,
             coarse_registration,
-            25
+            10
         )
         
         return (
@@ -229,8 +291,8 @@ class RansacRegister:
     # other utilities
     def matches_filter(
         self,
-        feats1: np.ndarray,
-        feats2: np.ndarray,
+        keyfeats1: np.ndarray,
+        keyfeats2: np.ndarray,
         matches: np.ndarray,
     ):
         '''use contrastive model to filter matches
@@ -250,4 +312,14 @@ class RansacRegister:
             New filtered matches indices.
         '''
         
+        with torch.no_grad():
+            concat_feats = torch.from_numpy(
+                np.concatenate([
+                    keyfeats1[matches[:, 0]],
+                    keyfeats2[matches[:, 1]]
+                ], axis=1)
+            )
+            manifold_coords = self.mapper(concat_feats.unsqueeze(0).transpose(1,2).to(self.device))
+            predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.75
         
+        return matches[predicted_mask], predicted_mask, manifold_coords.reshape(-1, 3).cpu().numpy()
