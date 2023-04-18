@@ -48,26 +48,16 @@ class RansacRegister:
     def __init__(
         self,
         voxel_size: float,
-        # ISS key point detector
-        key_radius_factor: float,
-        # FCGF and FPFH extracter
-        extracter_type: str,
-        extracter_weights: str,
-        feat_radius_factor: float,
-        feat_neighbour_num: int,
-        # matches filter
+        # keypoint detector
+        key_radius: float,
+        # feature extracter
+        extracter_conf,
+        # inlier proposal
         mapper_conf: str,
         predictor_conf: str,
-        # ransac registration
-        ransac_workers_num: int,
-        ransac_samples_num: int,
-        ransac_corrdist_factor: float,
-        ransac_iter_num: int,
-        ransac_vald_num: int,
-        ransac_rfne_num: int,
-        checkr_corrdist_factor: float,
-        checkr_mutldist_factor: float,
-        checkr_normdegr_thresh: float
+        # optimization
+        ransac_conf,
+        checkr_conf
     ) -> None:
         '''
         param
@@ -104,33 +94,25 @@ class RansacRegister:
         from . import featextracter
         self.voxel_size = voxel_size
         
-        self.key_radius_factor = key_radius_factor
+        self.key_radius = key_radius
         
-        self.extracter = None
-        extracter_class = featextracter.load_extracter(extracter_type)
-        if extracter_type == "FPFHFeatExtracter":
-            self.extracter = extracter_class(
-                voxel_size * feat_radius_factor,
-                feat_neighbour_num
-            )
-        elif extracter_type == "FCGFFeatExtracter":
-            self.extracter = extracter_class(
-                model_type="ResUNetBN2C",
-                state_dict_path=extracter_weights
-            )
+        self.extracter = featextracter.load_extracter(extracter_conf)
         
-        self.ransac_params = edict({
-            "max_workers": ransac_workers_num, "num_samples":ransac_samples_num,
-            "max_corresponding_dist":voxel_size * ransac_corrdist_factor,
-            "max_iter_num":ransac_iter_num,
-            "max_valid_num":ransac_vald_num,
-            "max_refine_num":ransac_rfne_num
-        })
-        self.checkr_params=edict({
-            "max_corresponding_dist":voxel_size * checkr_corrdist_factor,
-            "max_mnn_dist_ratio":checkr_mutldist_factor,
-            "normal_angle_threshold":checkr_normdegr_thresh
-        })
+        # self.ransac_conf = edict({
+        #     "num_workers": ransac_workers_num,
+        #     "num_samples": ransac_samples_num,
+        #     "max_corrdist": voxel_size * ransac_corrdist_factor,
+        #     "num_iter":ransac_iter_num,
+        #     "num_vald":ransac_vald_num,
+        #     "num_rfne":ransac_rfne_num
+        # })
+        # self.checkr_conf=edict({
+        #     "max_corrdist":voxel_size * checkr_corrdist_factor,
+        #     "mutldist_factor":checkr_mutldist_factor,
+        #     "normdegr_thresh":checkr_normdegr_thresh
+        # })
+        self.ransac_conf = ransac_conf
+        self.checkr_conf = checkr_conf
 
         # filter configuration
         self.mapper = None
@@ -159,7 +141,7 @@ class RansacRegister:
     
     # step2: detect keypoints
     def keypoints_detect(self, downsampled_coords: np.ndarray):
-        keyptsdict = utils.iss_detect(downsampled_coords, self.voxel_size * self.key_radius_factor)
+        keyptsdict = utils.iss_detect(downsampled_coords, self.key_radius)
         return keyptsdict
     
     # step3: extract feature descriptors of all points
@@ -206,8 +188,8 @@ class RansacRegister:
         coarse_registration = utils.ransac_match(
             keycoords1, keycoords2,
             keyfeats1, keyfeats2,
-            ransac_params=self.ransac_params,
-            checkr_params=self.checkr_params,
+            ransac_conf=self.ransac_conf,
+            checkr_conf=self.checkr_conf,
             matches=matches
         )
         
@@ -320,6 +302,6 @@ class RansacRegister:
                 ], axis=1)
             )
             manifold_coords = self.mapper(concat_feats.unsqueeze(0).transpose(1,2).to(self.device))
-            predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.75
+            predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.5
         
         return matches[predicted_mask], predicted_mask, manifold_coords.reshape(-1, 3).cpu().numpy()

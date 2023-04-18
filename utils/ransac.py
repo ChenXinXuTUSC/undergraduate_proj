@@ -44,12 +44,12 @@ def filter_matches(matches:np.ndarray, keyfpfhs1:np.ndarray, keyfpfhs2:np.ndarra
 def one_iter_match(
         srckts, dstkts, 
         proposal,
-        checkr_params
+        checkr_conf
     ):
     # 把两组关键点按对应关系排列好
     srckts = srckts[proposal[:,0]]
     dstkts = dstkts[proposal[:,1]]
-    if checkr_params.normal_angle_threshold is not None:
+    if checkr_conf.normdegr_thresh is not None:
         # we assume the point cloud feature is [x,y,z,r,g,b,u,v,w]
         src_normals = srckts[6:9]
         dst_normals = dstkts[6:9]
@@ -58,7 +58,7 @@ def one_iter_match(
         # np.dot是矩阵乘法，*是对应元素乘法
         match_cosine = (src_normals * dst_normals).sum(axis=1)
         # 如果每对匹配特征点的法向量夹角都符合阈值，则匹配通过
-        is_valid_normal_match = np.all(match_cosine >= checkr_params.normal_angle_threshold)
+        is_valid_normal_match = np.all(match_cosine >= checkr_conf.normdegr_thresh)
         if not is_valid_normal_match:
             return None
     
@@ -71,8 +71,8 @@ def one_iter_match(
     dst_mnn_dist = pdist(dstkts) # 只取用xyz坐标部分
     is_valid_mnn_match = np.all(
         np.logical_and(
-            src_mnn_dist > dst_mnn_dist * checkr_params.max_mnn_dist_ratio,
-            dst_mnn_dist > src_mnn_dist * checkr_params.max_mnn_dist_ratio
+            src_mnn_dist > dst_mnn_dist * checkr_conf.mutldist_factor,
+            dst_mnn_dist > src_mnn_dist * checkr_conf.mutldist_factor
         )
     )
     if not is_valid_mnn_match:
@@ -84,7 +84,7 @@ def one_iter_match(
 
     # deviation to judge outlier and inlier
     deviation = np.linalg.norm(dstkts - np.dot(srckts, R) - t, axis=1)
-    is_valid_deviation_match = np.all(deviation <= checkr_params.max_corresponding_dist)
+    is_valid_deviation_match = np.all(deviation <= checkr_conf.max_corrdist)
     if not is_valid_deviation_match:
         return None
     
@@ -95,8 +95,8 @@ def ransac_match(
         dstkts: np.ndarray,
         srcfds: np.ndarray,
         dstfds: np.ndarray,
-        ransac_params,
-        checkr_params,
+        ransac_conf,
+        checkr_conf,
         matches=None,
         T_gdth=None
     ):
@@ -120,17 +120,17 @@ def ransac_match(
 
     initial_T = None
     # infinite generator
-    proposal_generator_serial = (matches[np.random.choice(range(matches.shape[0]), ransac_params.num_samples, replace=False)] for _ in iter(int, 1))
-    validator = lambda proposal: one_iter_match(srckts, dstkts, proposal, checkr_params)
+    proposal_generator_serial = (matches[np.random.choice(range(matches.shape[0]), ransac_conf.num_samples, replace=False)] for _ in iter(int, 1))
+    validator = lambda proposal: one_iter_match(srckts, dstkts, proposal, checkr_conf)
 
     # concurrently find the inital T, using 'with' method
     # so that Executor.shutdown(wait=True) is not needed.
     log_dbug("finding initial transformation T...")
     t1 = time.time()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=ransac_params.max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=ransac_conf.num_workers) as executor:
         Ts = []
         while len(Ts) < 4:
-            proposal_generator_parall = (matches[np.random.choice(range(matches.shape[0]), ransac_params.num_samples, replace=False)] for _ in range(ransac_params.max_workers))
+            proposal_generator_parall = (matches[np.random.choice(range(matches.shape[0]), ransac_conf.num_samples, replace=False)] for _ in range(ransac_conf.num_workers))
             futures = [executor.submit(validator, proposal) for proposal in proposal_generator_parall]
             for future in concurrent.futures.as_completed(futures):
                 try:
@@ -156,7 +156,7 @@ def ransac_match(
         candidate_evaluation = icp.ICP_exact_match(
             srckts, dstkts, dst_search_tree,
             T,
-            ransac_params.max_corresponding_dist, ransac_params.max_refine_num
+            ransac_conf.max_corrdist, ransac_conf.num_rfne
         )
         if candidate_evaluation.fitness >= best_fitness:
             best_fitness = candidate_evaluation.fitness
@@ -166,138 +166,23 @@ def ransac_match(
     best_evaluation = icp.ICP_exact_match(
         srckts, dstkts, dst_search_tree,
         initial_T,
-        ransac_params.max_corresponding_dist, ransac_params.max_refine_num
+        ransac_conf.max_corrdist, ransac_conf.num_rfne
     )
     num_validation = 0
-    for _ in tqdm(range(ransac_params.max_iter_num), total=ransac_params.max_iter_num, ncols=100, desc="ICP refining"):
+    for _ in tqdm(range(ransac_conf.num_iter), total=ransac_conf.num_iter, ncols=100, desc="ICP refining"):
         T = validator(next(proposal_generator_serial))
         # check validity
-        if T is not None and num_validation < ransac_params.max_valid_num:
+        if T is not None and num_validation < ransac_conf.num_vald:
             curr_evaluation = icp.ICP_exact_match(
                 srckts, dstkts, dst_search_tree,
                 T,
-                ransac_params.max_corresponding_dist, ransac_params.max_refine_num
+                ransac_conf.max_corrdist, ransac_conf.num_rfne
             )
             if curr_evaluation.fitness > best_evaluation.fitness:
                 best_evaluation = curr_evaluation
             num_validation += 1
         
-        if num_validation == ransac_params.max_valid_num:
+        if num_validation == ransac_conf.num_vald:
             break
 
     return best_evaluation
-
-
-def one_iter_match_copy(
-    source_idx, target_idx,
-    source_pcd, target_pcd,
-    proposal,
-    checkr_params
-):
-    source_idx, target_idx = proposal[:, 0], proposal[:, 1]
-    #法向量校准
-    if not checkr_params.normal_angle_threshold is None:
-        # get corresponding normals:
-        normals_source = np.asarray(source_pcd.normals)[source_idx]
-        normals_target = np.asarray(target_pcd.normals)[target_idx]
-
-        # a. normal direction check:
-        normal_cos_distances = (normals_source*normals_target).sum(axis = 1)
-        is_valid_normal_match = np.all(normal_cos_distances >= np.cos(checkr_params.normal_angle_threshold))
-
-        if not is_valid_normal_match:
-            return None
-
-    # 按对应关系排列好关键点对
-    points_source = np.asarray(source_pcd.points)[source_idx]
-    points_target = np.asarray(target_pcd.points)[target_idx]
-
-    # 关键点群的特征通过同一点群内的互相距离来表示，只有选择的
-    # 两个关键点群特征相似时，认为是好的proposal
-    # 构建距离矩阵，使用 Mutual nearest descriptor matching
-    pdist_source = pdist(points_source)
-    pdist_target = pdist(points_target)
-    pdist_source_valid_mean = np.mean((pdist_source > checkr_params.max_mnn_dist_ratio * pdist_target).astype(float))
-    pdist_target_valid_mean = np.mean((pdist_target > checkr_params.max_mnn_dist_ratio * pdist_source).astype(float))
-    is_valid_mnn_dist = pdist_source_valid_mean > checkr_params.max_mnn_dist_ratio and pdist_target_valid_mean > checkr_params.max_mnn_dist_ratio
-
-    if not is_valid_mnn_dist:
-        return None
-
-    # fast correspondence distance check
-    T = solve_procrustes(points_source, points_target) # 通过 svd 初步求解 旋转、平移矩阵
-    R, t = T[:3, :3], T[:3, 3]
-    # 通过距离偏差判断 inliers outliers
-    deviation = np.linalg.norm(
-        points_target - np.dot(points_source, R.T) - t,
-        axis = 1
-    )
-    #判断数目
-    is_valid_correspondence_distance = np.all(deviation <= checkr_params.max_correspondence_dist)
-
-    return T if is_valid_correspondence_distance else None
-
-def ransac_match_copy(
-        source_idx, target_idx,
-        source_pcd, target_pcd,
-        source_fds, target_fds,
-        ransac_params, checkr_params,
-        matches=None
-    ):
-    # step5.1 Establish correspondences(point pairs) 建立 pairs
-    if matches == None:
-        matches = init_matches(source_fds, target_fds) # 通过 fpfh 建立的feature squre map 建立最初的 pairs
-
-    # build search tree on the target:
-    search_tree_target = o3d.geometry.KDTreeFlann(target_pcd)
-    # FLANN stands for fast library for aproximate nearest neighbours
-
-    T = None
-    # step 5.2 select 4 pairs at each iteration,选择4对corresponding 进行模型拟合
-    proposal_generator = (
-        matches[np.random.choice(range(matches.shape[0]), ransac_params.num_samples, replace=False)] for _ in iter(int, 1)
-    )
-    # step 5.3 iter 迭代，iter_match() ,选择出 vaild T
-    validator = lambda proposal: one_iter_match_copy(source_idx, target_idx, source_pcd, target_pcd, proposal, checkr_params)
-    for T in map(validator, proposal_generator):
-        if T is not None:
-            log_dbug(f"initial transformation found:\n{T}")
-            tmp_R = T[:3, :3]
-            log_dbug(f"validate if R is  orthogonal:\n{np.dot(tmp_R, tmp_R.T)}")
-            break
-
-    #set baseline
-    log_dbug('finding first valid proposal...')
-    best_result = icp.ICP_exact_match_copy(
-        source_pcd, target_pcd, search_tree_target,
-        T,
-        ransac_params.max_correspondence_dist,
-        ransac_params.max_refine_num
-    )
-
-    # RANSAC:
-    num_validation = 0
-    for _ in tqdm(range(ransac_params.max_iter_num), total=ransac_params.max_iter_num, ncols=100, desc="ransac finding"):
-        # get proposal:
-        T = validator(next(proposal_generator))
-
-        # check validity:
-        if T is not None and num_validation < ransac_params.max_valid_num:
-            num_validation += 1
-
-            # refine estimation on all keypoints:
-            result = icp.ICP_exact_match_copy(
-                source_pcd, target_pcd, search_tree_target,
-                T,
-                ransac_params.max_correspondence_dist,
-                ransac_params.max_refine_num
-            )
-
-            # update best result:
-            if best_result.fitness < result.fitness:
-                best_result = result
-
-            if num_validation == ransac_params.max_valid_num:
-                break
-
-    return best_result

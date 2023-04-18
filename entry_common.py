@@ -38,25 +38,45 @@ if __name__ == "__main__":
         args=args
     )
     
+    # model configurations
+    extracter_conf = edict({
+        "extracter_type": args.extracter_type,
+        # for fcgf
+        "extracter_weight": args.extracter_weight,
+        "fcgf_model": args.fcgf_model,
+        # for fpfh
+        "feat_radius": args.voxel_size * 2.0,
+        "feat_neighbour_num": 50
+    })
+    
+    ransac_conf = edict({
+        "num_workers": 4,
+        "num_samples": 7,
+        "max_corrdist": args.voxel_size * 1.5,
+        "num_iter": 10000,
+        "num_vald": 1000,
+        "num_rfne": 25
+    })
+    
+    checkr_conf = edict({
+        "max_corrdist": args.voxel_size * 1.5,
+        "mutldist_factor": 0.85,
+        "normdegr_thresh": None
+    })
+    
     register = models.registercore.RansacRegister(
         voxel_size=args.voxel_size,
-        key_radius_factor=args.key_radius_factor,
-        extracter_type=args.extracter_type,
-        extracter_weights=args.state_dict,
-        feat_radius_factor=args.voxel_size*2.0,
-        feat_neighbour_num=50,
+        # keypoint detector
+        key_radius=args.voxel_size * args.key_radius_factor,
+        # feature extracter
+        extracter_conf=extracter_conf,
+        # inlier proposal
         mapper_conf=args.mapper_conf,
         predictor_conf=args.predictor_conf,
-        ransac_workers_num=4,
-        ransac_samples_num=5,
-        ransac_corrdist_factor=2.0,
-        ransac_iter_num=10000,
-        ransac_vald_num=1000,
-        ransac_rfne_num=25,
-        checkr_corrdist_factor=2.0,
-        checkr_mutldist_factor=0.85,
-        checkr_normdegr_thresh=None,
         
+        # optimization
+        ransac_conf=ransac_conf,
+        checkr_conf=checkr_conf
     )
     
     timer = utils.timer()

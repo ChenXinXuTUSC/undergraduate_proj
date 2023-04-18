@@ -8,9 +8,11 @@ parser.add_argument("--out_root", type=str, default="./results", help="dir to st
 # register model configurations
 parser.add_argument("--voxel_size", type=float, required=True, help="voxel size for down sample and ICP registration")
 parser.add_argument("--key_radius_factor", type=float, default=1.0, help="scale factor on voxel size for key point detection")
-parser.add_argument("--extracter_type", type=str, default="FPFH", help="feature extracter model class name")
-parser.add_argument("--feat_model", type=str, help="class name of feature extraction model")
-parser.add_argument("--state_dict", type=str, help="path to the model state dict")
+
+parser.add_argument("--extracter_type", type=str, default="FPFHFeatExtracter", help="feature extracter model class name")
+parser.add_argument("--extracter_weight", type=str, help="path to the model state dict")
+parser.add_argument("--fcgf_model", type=str, help="class name of feature extraction model")
+
 parser.add_argument("--mapper_conf", type=str, default="", help="path to mapper conf yaml")
 parser.add_argument("--predictor_conf", type=str, default="", help="path to predictor conf yaml")
 

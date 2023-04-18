@@ -13,6 +13,10 @@ class FPFHFeatExtracter:
         self.radius = feat_radius
         self.max_nn = max_neighbournum
     
+    @classmethod
+    def conf_init(cls, conf):
+        return cls(conf.feat_radius, conf.feat_neighbour_num)
+    
     def __call__(self, downsampled_coords: np.ndarray, voxelized_coords: np.ndarray):
         coords_o3d = utils.npy2o3d(downsampled_coords)
         coords_o3d.estimate_normals(
@@ -35,16 +39,16 @@ class FPFHFeatExtracter:
 class FCGFFeatExtracter:
     def __init__(
         self,
-        model_type: str,
-        state_dict_path: str
+        fcgf_model: str,
+        path_to_weight: str
     ) -> None:
         from . import fcgf
         
-        pth_data = torch.load(state_dict_path)
+        pth_data = torch.load(path_to_weight)
         self.model_configs = pth_data["config"]
         self.model_weights = pth_data["state_dict"]
         
-        self.fcgf_model = fcgf.load_model(model_type)(
+        self.fcgf_model = fcgf.load_model(fcgf_model)(
             1,
             self.model_configs["model_n_out"],
             bn_momentum=self.model_configs["bn_momentum"],
@@ -55,6 +59,10 @@ class FCGFFeatExtracter:
         self.fcgf_model.eval()
         self.model_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.fcgf_model.to(self.model_device)
+        
+    @classmethod
+    def conf_init(cls, conf):
+        return cls(conf.fcgf_model, conf.extracter_weight)
     
     def __call__(self, downsampled_coords: np.ndarray, voxelized_coords: np.ndarray):
         import MinkowskiEngine as ME
@@ -68,7 +76,8 @@ class FCGFFeatExtracter:
 
 ALL_FEATEXTRACTER = [FPFHFeatExtracter, FCGFFeatExtracter]
 extracter_dict = {m.__name__:m for m in ALL_FEATEXTRACTER}
-def load_extracter(name: str):
-    if name not in extracter_dict:
+def load_extracter(extracter_conf):
+    extracter_type = extracter_conf["extracter_type"]
+    if extracter_type not in extracter_dict:
         raise Exception("feature extracter not recognized")
-    return extracter_dict[name]
+    return extracter_dict[extracter_type].conf_init(extracter_conf)
