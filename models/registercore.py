@@ -179,8 +179,9 @@ class RansacRegister:
         
         if self.use_filter:
             matches, predicted_mask, manifold_coords = self.matches_filter(keyfeats1, keyfeats2, matches)
-            snapshot(manifold_coords, correct,        d=2, out_name="gdth")
-            snapshot(manifold_coords, predicted_mask, d=2, out_name="pred")
+            plane_coords = np.reshape(manifold_coords, (-1, self.mapper.out_channels))
+            snapshot(plane_coords, correct,        d=2, out_name="gdth")
+            snapshot(plane_coords, predicted_mask, d=2, out_name="pred")
             correct_valid_num = np.logical_and(correct, predicted_mask).sum()
             correct_total_num = matches.shape[0]
             utils.log_dbug(f"gdth/pred: {correct_valid_num:d}/{correct_total_num:d}={correct_valid_num/correct_total_num:.3f}")
@@ -304,4 +305,4 @@ class RansacRegister:
             manifold_coords = self.mapper(concat_feats.unsqueeze(0).transpose(1,2).to(self.device))
             predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.5
         
-        return matches[predicted_mask], predicted_mask, manifold_coords.reshape(-1, 3).cpu().numpy()
+        return matches[predicted_mask], predicted_mask, manifold_coords.cpu().numpy()

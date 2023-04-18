@@ -48,16 +48,9 @@ def save_state_dict(state, out_dir:str, out_name: str):
         torch.save(state, f"{out_dir}/{out_name}.pth")
 
 if __name__ == "__main__":
-    timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-    log_dir = f"./log/Predictor/{timestamp}"
-    tfxw = SummaryWriter(log_dir=log_dir)
-    num_epochs = 100
-    log_freq = 10
-    save_freq = 10
-    
     train_loader = torch.utils.data.DataLoader(
         datasets.train_data.MatchingFCGF(
-            "./data",
+            "./data/fcgf_matches",
             16
         ),
         num_workers=2,
@@ -67,10 +60,10 @@ if __name__ == "__main__":
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/mapper.yaml")
+    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/conf/mapper.yaml")
     classifier.to(device)
     classifier.eval()
-    predictor = models.inlier_proposal.predictor.Predictor.conf_init("models/predictor.yaml")
+    predictor = models.inlier_proposal.predictor.Predictor.conf_init("models/conf/predictor.yaml")
     predictor.to(device)
     predictor.train()
     
@@ -79,6 +72,12 @@ if __name__ == "__main__":
     lossfn = models.metric.bce.BalancedLoss()
     
     
+    timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
+    log_dir = f"./log/Predictor/i{predictor.in_channels}o{predictor.out_channels}/{timestamp}"
+    tfxw = SummaryWriter(log_dir=log_dir)
+    num_epochs = 100
+    log_freq = 10
+    save_freq = 10
     best_avg_loss = None
     for epoch in range(1, num_epochs + 1):
         loss_totl = 0.0

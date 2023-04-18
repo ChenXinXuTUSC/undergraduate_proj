@@ -47,19 +47,10 @@ def save_state_dict(state, out_dir:str, out_name: str):
         os.makedirs(out_dir, mode=0o755)
         torch.save(state, f"{out_dir}/{out_name}.pth")
 
-if __name__ == "__main__":
-    timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-    log_dir = f"./log/Mapper/{timestamp}"
-    tfxw = SummaryWriter(log_dir=log_dir)
-    num_epochs = 100
-    log_freq = 10
-    save_freq = 25
-    
-    feat_channels = 6
-    
+if __name__ == "__main__":    
     train_loader = torch.utils.data.DataLoader(
         datasets.train_data.MatchingFCGF(
-            "./data",
+            "./data/fcgf_matches",
             128,
             postive_ratio=0.1
         ),
@@ -69,13 +60,20 @@ if __name__ == "__main__":
     )
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/mapper.yaml")
+    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/conf/mapper.yaml")
     classifier.to(device)
     classifier.train()
     optimizer = torch.optim.Adam(classifier.parameters(), 1e-2)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     lossfn = models.metric.contrastive.ContrastiveLoss()
     
+    
+    timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
+    log_dir = f"./log/Mapper/i{classifier.in_channels}o{classifier.out_channels}/{timestamp}"
+    tfxw = SummaryWriter(log_dir=log_dir)
+    num_epochs = 100
+    log_freq = 10
+    save_freq = 25
     best_avg_loss = None
     for epoch in range(1, num_epochs + 1):
         loss_totl = 0.0
@@ -83,7 +81,8 @@ if __name__ == "__main__":
             matches = matches.to(device)
             labels = labels.to(device)
             matches = matches.transpose(1, 2)
-            output = classifier(matches).transpose(1, 2).reshape(-1, feat_channels)
+            output = classifier(matches).transpose(1, 2)
+            output = output.reshape(-1, output.size(-1))
             labels = labels.reshape(-1, 1)
             loss = lossfn(output, labels, centeralized=False)
             

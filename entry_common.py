@@ -79,7 +79,6 @@ if __name__ == "__main__":
         checkr_conf=checkr_conf
     )
     
-    timer = utils.timer()
     for points1, points2, T_gdth, sample_name in dataloader:
         points1_o3d = utils.npy2o3d(points1)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))

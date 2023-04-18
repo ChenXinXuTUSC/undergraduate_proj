@@ -39,12 +39,12 @@ if __name__ == "__main__":
     for points1, points2, T_gdth, sample_name in dataloader:
         utils.log_info(sample_name)
         # step1: voxel downsample
-        coords1 = utils.voxel_down_sample(points1, args.ICP_radius)
-        coords2 = utils.voxel_down_sample(points2, args.ICP_radius)
+        coords1 = utils.voxel_down_sample(points1, args.voxel_size)
+        coords2 = utils.voxel_down_sample(points2, args.voxel_size)
 
         # step2: detect key points using ISS
-        keyptsdict1 = utils.iss_detect(coords1, args.ICP_radius * 0.95)
-        keyptsdict2 = utils.iss_detect(coords2, args.ICP_radius * 0.95)
+        keyptsdict1 = utils.iss_detect(coords1, args.voxel_size * 1.00)
+        keyptsdict2 = utils.iss_detect(coords2, args.voxel_size * 1.00)
         if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
@@ -54,16 +54,16 @@ if __name__ == "__main__":
         # step3: compute FPFH for each key point
         coords1_o3d = utils.npy2o3d(coords1)
         coords2_o3d = utils.npy2o3d(coords2)
-        coords1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
-        coords2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
+        coords1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=50))
+        coords2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=50))
         # compute all points' fpfh
         fpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
             coords1_o3d,
-            o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*5.0, max_nn=100)
+            o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*5.0, max_nn=100)
         ).data
         fpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
             coords2_o3d,
-            o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*5.0, max_nn=100)
+            o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*5.0, max_nn=100)
         ).data
         # only select key points' fpfh
         keyfeats1 = fpfhs1[:, keyptsdict1["id"].values]
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfeats1, keyfeats2)
-        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.ICP_radius * 2.5, T_gdth) # 上帝视角
+        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.voxel_size * 2.5, T_gdth) # 上帝视角
         # 将对匹配对索引从关键点集合映射回原点云集合
         init_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T
         gdth_matches = np.array([keyptsdict1["id"].values[matches[:,0]], keyptsdict2["id"].values[matches[:,1]]]).T[correct]
@@ -85,11 +85,11 @@ if __name__ == "__main__":
             keyfeats1, keyfeats2,
             ransac_params=edict({
                 "max_workers":4, "num_samples":4,
-                "max_corresponding_dist":args.ICP_radius*2.0,
+                "max_corresponding_dist":args.voxel_size*2.0,
                 "max_iter_num":2000, "max_valid_num":100, "max_refine_num":30
             }),
             checkr_params=edict({
-                "max_corresponding_dist":args.ICP_radius*2.0,
+                "max_corresponding_dist":args.voxel_size*2.0,
                 "max_mnn_dist_ratio":0.85,
                 "normal_angle_threshold":None
             }),
@@ -102,7 +102,7 @@ if __name__ == "__main__":
         
         final_result = icp.ICP_exact_match(
             points1, points2, o3d.geometry.KDTreeFlann(coords2_o3d), 
-            initial_ransac.transformation, args.ICP_radius,
+            initial_ransac.transformation, args.voxel_size,
             100
         )
 
@@ -128,8 +128,8 @@ if __name__ == "__main__":
         # original colour
         points1_o3d = utils.npy2o3d(points1)
         points2_o3d = utils.npy2o3d(points2)
-        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
-        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.ICP_radius*2.0, max_nn=50))
+        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=50))
+        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=50))
         # dense points comparison
         points1_o3d.paint_uniform_color([1.0, 1.0, 0.0])
         points2_o3d.paint_uniform_color([0.0, 1.0, 1.0])

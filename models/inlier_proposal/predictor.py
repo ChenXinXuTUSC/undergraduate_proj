@@ -21,6 +21,8 @@ class Predictor(nn.Module):
         weight: str=None
     ) -> None:
         super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         
         self.unet = block.UnetBlock1d(in_channels, mid_channels)
         self.convo = nn.Conv1d(mid_channels[-1], out_channels, 1, 1, bias=True)
@@ -51,4 +53,3 @@ class Predictor(nn.Module):
         y = self.unet(x)
         y = self.normo(self.convo(y))
         return y # no sigmoid to transform into probabilities
-

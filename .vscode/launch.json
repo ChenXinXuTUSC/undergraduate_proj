@@ -16,12 +16,12 @@
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
                 // "--rooms", "7-scenes-redkitchen",
-                "--out_root", "${workspaceFolder}/data",
+                "--out_root", "${workspaceFolder}/data/fpfh_matches",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
-                "--feat_model", "ResUNetBN2C",
-                "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
+                "--fcgf_model", "ResUNetBN2C",
+                "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -54,7 +54,7 @@
             "name": "FPFH 3DMatch",
             "type": "python",
             "request": "launch",
-            "program": "fpfh_3DMatch.py",
+            "program": "fpfh_3dmatch.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
@@ -160,8 +160,8 @@
                 "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
                 "--fcgf_model", "ResUNetBN2C",
 
-                "--mapper_conf", "${workspaceFolder}/models/mapper.yaml",
-                "--predictor_conf", "${workspaceFolder}/models/predictor.yaml",
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper.yaml",
+                "--predictor_conf", "${workspaceFolder}/models/conf/predictor.yaml",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
