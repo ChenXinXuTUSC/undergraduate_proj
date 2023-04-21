@@ -49,10 +49,11 @@ def save_state_dict(state, out_dir:str, out_name: str):
 
 if __name__ == "__main__":    
     train_loader = torch.utils.data.DataLoader(
-        datasets.train_data.MatchingFCGF(
-            "./data/fcgf_matches",
-            128,
-            postive_ratio=0.1
+        datasets.train_data.MatchingFeats(
+            "./data/fpfh_matches",
+            64,
+            postive_ratio=0.1,
+            filter_strs=["airplane", "flower_pot", "guitar"]
         ),
         num_workers=2,
         batch_size=8,
@@ -77,8 +78,8 @@ if __name__ == "__main__":
     best_avg_loss = None
     for epoch in range(1, num_epochs + 1):
         loss_totl = 0.0
-        for iter, (matches, labels) in tqdm(enumerate(train_loader), total=len(train_loader), ncols=100, desc=f"{utils.redd(f'train epoch {epoch:3d}/{num_epochs}')}"):
-            matches = matches.to(device)
+        for iter, (matches, labels,) in tqdm(enumerate(train_loader), total=len(train_loader), ncols=100, desc=f"{utils.redd(f'train epoch {epoch:3d}/{num_epochs}')}"):
+            matches = matches.to(device).float()
             labels = labels.to(device)
             matches = matches.transpose(1, 2)
             output = classifier(matches).transpose(1, 2)
@@ -99,7 +100,7 @@ if __name__ == "__main__":
                         tag="train/snapshot",
                         figure=snapshot(
                             output.detach().cpu().numpy(),
-                            labels.detach().cpu().numpy(),
+                            labels.detach().cpu().numpy().astype(np.int32),
                             2
                         ), global_step=epoch*len(train_loader) + iter
                     )
@@ -109,5 +110,5 @@ if __name__ == "__main__":
         if best_avg_loss is None or epoch_avg_loss < best_avg_loss:
             best_avg_loss = epoch_avg_loss
             save_state_dict(classifier.state_dict(), out_dir=f"{log_dir}/weights", out_name="best")
-        
+        tqdm.write(utils.log_info(f"best_avg_loss: {best_avg_loss:.3f}", quiet=True))
         scheduler.step()

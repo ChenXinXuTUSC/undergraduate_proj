@@ -180,8 +180,8 @@ class RansacRegister:
         if self.use_filter:
             matches, predicted_mask, manifold_coords = self.matches_filter(keyfeats1, keyfeats2, matches)
             plane_coords = np.reshape(manifold_coords, (-1, self.mapper.out_channels))
-            snapshot(plane_coords, correct,        d=2, out_name="gdth")
-            snapshot(plane_coords, predicted_mask, d=2, out_name="pred")
+            # snapshot(plane_coords, correct,        d=2, out_name="gdth")
+            # snapshot(plane_coords, predicted_mask, d=2, out_name="pred")
             correct_valid_num = np.logical_and(correct, predicted_mask).sum()
             correct_total_num = matches.shape[0]
             utils.log_dbug(f"gdth/pred: {correct_valid_num:d}/{correct_total_num:d}={correct_valid_num/correct_total_num:.3f}")
@@ -193,6 +193,7 @@ class RansacRegister:
             checkr_conf=self.checkr_conf,
             matches=matches
         )
+        
         
         return coarse_registration, totl_matches, gdth_matches
     
@@ -256,7 +257,15 @@ class RansacRegister:
             feats1, feats2,
             T_gdth
         )
+        utils.log_dbug(f"coarse corresponding pairs: {len(coarse_registration.correspondence_set)}")
         
+        if coarse_registration is None:
+            return (
+                None,
+                pcd1[idx_dse2vox1], pcd2[idx_dse2vox2],
+                keyptsdict1, keyptsdict2,
+                totl_matches, gdth_matches
+            )
         # step5: fine registration
         fine_registrartion = self.fine_registrartion(
             downsampled_coords1, downsampled_coords2,
@@ -302,7 +311,7 @@ class RansacRegister:
                     keyfeats2[matches[:, 1]]
                 ], axis=1)
             )
-            manifold_coords = self.mapper(concat_feats.unsqueeze(0).transpose(1,2).to(self.device))
+            manifold_coords = self.mapper(concat_feats.unsqueeze(0).transpose(1,2).to(self.device).float())
             predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.5
         
         return matches[predicted_mask], predicted_mask, manifold_coords.cpu().numpy()

@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import collections
 import open3d as o3d
 from easydict import EasyDict as edict
 
@@ -8,12 +7,8 @@ from datasets import datasets
 import config
 import utils
 
-from utils import ransac
-from utils import icp
 import models
 
-import MinkowskiEngine as ME
-import torch
 
 # step1: read point cloud pair
 # step2: voxel down sample
@@ -45,13 +40,13 @@ if __name__ == "__main__":
         "extracter_weight": args.extracter_weight,
         "fcgf_model": args.fcgf_model,
         # for fpfh
-        "feat_radius": args.voxel_size * 2.0,
-        "feat_neighbour_num": 50
+        "feat_radius": args.voxel_size * args.fpfh_radius_factor,
+        "feat_neighbour_num": args.fpfh_nn
     })
     
     ransac_conf = edict({
         "num_workers": 4,
-        "num_samples": 7,
+        "num_samples": 6,
         "max_corrdist": args.voxel_size * 1.5,
         "num_iter": 10000,
         "num_vald": 1000,
@@ -60,7 +55,7 @@ if __name__ == "__main__":
     
     checkr_conf = edict({
         "max_corrdist": args.voxel_size * 1.5,
-        "mutldist_factor": 0.85,
+        "mutldist_factor": 0.90,
         "normdegr_thresh": None
     })
     
@@ -81,10 +76,10 @@ if __name__ == "__main__":
     
     for points1, points2, T_gdth, sample_name in dataloader:
         points1_o3d = utils.npy2o3d(points1)
-        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))
+        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=30))
         points1 = utils.o3d2npy(points1_o3d)
         points2_o3d = utils.npy2o3d(points2)
-        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))
+        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=30))
         points2 = utils.o3d2npy(points2_o3d)
         (
             fine_registrartion,
@@ -92,6 +87,10 @@ if __name__ == "__main__":
             keyptsdict1, keyptsdict2,
             totl_matches, gdth_matches
         ) = register.register(points1, points2, T_gdth)
+        if fine_registrartion is None:
+            utils.log_warn(f"fail to register {sample_name}")
+            continue
+        
         T_pred = fine_registrartion.transformation
         utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])

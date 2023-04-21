@@ -13,15 +13,12 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--data_type", "ThreeDMatchFCGF",
-                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                // "--rooms", "7-scenes-redkitchen",
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/data/fpfh_matches",
-                "--voxel_size", "0.05",
-                "--overlap_dn", "0.3",
-                "--overlap_up", "0.5",
-                "--fcgf_model", "ResUNetBN2C",
-                "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
+                "--voxel_size", "0.01",
+                // "--classes", "airplane guitar flower_pot",
+                "--partition", "0.00",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -41,7 +38,7 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/fpfh_modelnet40",
                 "--voxel_size", "0.01",
-                "--classes", "airplane guitar flower_pot",
+                "--classes", "guitar flower_pot",
                 "--partition", "0.00",
             ],
             "env": {
@@ -109,8 +106,8 @@
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
-                "--feat_model", "ResUNetBN2C",
-                "--state_dict", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
+                "--fcgf_model", "ResUNetBN2C",
+                "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth"
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -137,9 +134,9 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
-        // entry common
+        // entry common 3dmatch
         {
-            "name": "entry common",
+            "name": "entry 3dmatch",
             "type": "python",
             "request": "launch",
             "program": "entry_common.py",
@@ -148,7 +145,7 @@
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                // "--rooms", "7-scenes-redkitchen",
+                "--rooms", "sun3d-mit_lab_hj-lab_hj_tea_nov_2_2012_scan1_erika",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.3",
@@ -164,11 +161,43 @@
                 "--predictor_conf", "${workspaceFolder}/models/conf/predictor.yaml",
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
-        // train identifier
+        // entry common modelnet40
+        {
+            "name": "entry modelnet40",
+            "type": "python",
+            "request": "launch",
+            "program": "entry_common.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--classes", "lamp",
+                "--out_root", "${workspaceFolder}/results/inlier_proposal",
+                "--voxel_size", "0.01",
+                "--partition", "0.00",
+                
+                "--key_radius_factor", "1.75",
+                "--fpfh_radius_factor", "1.5",
+                "--fpfh_nn", "30",
+                
+                "--extracter_type", "FPFHFeatExtracter",
+                // "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
+                // "--fcgf_model", "ResUNetBN2C",
+
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper.yaml",
+                "--predictor_conf", "${workspaceFolder}/models/conf/predictor.yaml",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
+        },
+        // train mapper
         {
             "name": "train mapper",
             "type": "python",
@@ -197,6 +226,39 @@
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
+        },
+        // open3d benchmard
+        // entry common modelnet40
+        {
+            "name": "open3d testbench",
+            "type": "python",
+            "request": "launch",
+            "program": "o3d_testbench.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--classes", "ariplane guitar car",
+                "--out_root", "${workspaceFolder}/results/inlier_proposal",
+                "--voxel_size", "0.01",
+                "--partition", "0.00",
+                
+                "--key_radius_factor", "1.75",
+                "--fpfh_radius_factor", "5.0",
+                "--fpfh_nn", "100",
+                
+                "--extracter_type", "FPFHFeatExtracter",
+                // "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
+                // "--fcgf_model", "ResUNetBN2C",
+
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper.yaml",
+                "--predictor_conf", "${workspaceFolder}/models/conf/predictor.yaml",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },

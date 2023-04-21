@@ -31,9 +31,10 @@ class Predictor(nn.Module):
         if os.path.exists(weight):
             try:
                 self.load_state_dict(torch.load(weight))
+                utils.log_info("successfully load state dict for predictor")
             except Exception as e:
                 utils.log_warn("fail to load weight for predictor:", e)
-            utils.log_info("successfully load state dict for predictor")
+                utils.log_warn("run without pretrained weight")
     
     @classmethod
     def conf_init(cls, conf_file: str):

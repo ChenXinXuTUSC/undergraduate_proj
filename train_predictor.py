@@ -49,9 +49,11 @@ def save_state_dict(state, out_dir:str, out_name: str):
 
 if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(
-        datasets.train_data.MatchingFCGF(
-            "./data/fcgf_matches",
-            16
+        datasets.train_data.MatchingFeats(
+            "./data/fpfh_matches",
+            64,
+            postive_ratio=0.1,
+            filter_strs=["airplane", "flower_pot", "guitar"]
         ),
         num_workers=2,
         batch_size=8,
@@ -77,12 +79,12 @@ if __name__ == "__main__":
     tfxw = SummaryWriter(log_dir=log_dir)
     num_epochs = 100
     log_freq = 10
-    save_freq = 10
+    save_freq = 25
     best_avg_loss = None
     for epoch in range(1, num_epochs + 1):
         loss_totl = 0.0
         for iter, (matches, labels) in tqdm(enumerate(train_loader), total=len(train_loader), ncols=100, desc=f"{utils.redd(f'train epoch {epoch:3d}/{num_epochs}')}"):
-            matches = matches.to(device)
+            matches = matches.to(device).float()
             labels = labels.to(device)
 
             manifold_coords = classifier(matches.transpose(1, 2))

@@ -32,7 +32,7 @@ class FPFHFeatExtracter:
                 radius=self.radius,
                 max_nn=self.max_nn
             )
-        ).data
+        ).data.T
         
         return fpfhs
 

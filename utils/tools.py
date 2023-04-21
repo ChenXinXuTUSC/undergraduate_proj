@@ -384,7 +384,7 @@ def solve_procrustes(P,Q):
     U, S, V = np.linalg.svd(np.dot(Pu.T, Qu), full_matrices=True, compute_uv=True)
     R = np.dot(U, V)
     # t = Q_center - np.dot(P_center, R)
-    t = Q_center - P_center @ R
+    t = np.mean(Q - P @ R, axis=0) 
 
     T = np.eye(4)
     T[:3, :3] = R
@@ -514,7 +514,7 @@ def dump_registration_result(
             apply_transformation(downsampled_coords1, T_pred), downsampled_coords2, 
             gdth_matches, make_ply_vtx_type(True, True), 
             ply_edg_i1i2rgb,
-            f"{out_dir}/matches", f"{out_name}.ply"
+            f"{out_dir}/matches", f"{out_name}_matches.ply"
         )
     
     # contrastive comparison
@@ -522,13 +522,13 @@ def dump_registration_result(
     points2[:,3:6] = [255, 255, 0]
     fuse2frags(
         apply_transformation(points1, np.eye(4)), points2, 
-        make_ply_vtx_type(True, True), f"{out_dir}/orgl_contrastive", f"{out_name}.ply"
+        make_ply_vtx_type(True, True), f"{out_dir}/orgl_contrastive", f"{out_name}_orgl.ply"
     )
     fuse2frags(
         apply_transformation(points1, T_pred), points2, 
-        make_ply_vtx_type(True, True), f"{out_dir}/pred_contrastive", f"{out_name}.ply"
+        make_ply_vtx_type(True, True), f"{out_dir}/pred_contrastive", f"{out_name}_pred.ply"
     )
     fuse2frags(
         apply_transformation(points1, T_gdth), points2, 
-        make_ply_vtx_type(True, True), f"{out_dir}/gdth_contrastive", f"{out_name}.ply"
+        make_ply_vtx_type(True, True), f"{out_dir}/gdth_contrastive", f"{out_name}_gdth.ply"
     )

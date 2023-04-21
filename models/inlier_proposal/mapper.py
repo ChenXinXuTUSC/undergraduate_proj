@@ -42,9 +42,10 @@ class Mapper(nn.Module):
         if os.path.exists(weight):
             try:
                 self.load_state_dict(torch.load(weight))
+                utils.log_info("successfully load state dict for mapper")
             except Exception as e:
                 utils.log_warn("fail to load weight for mapper:", e)
-            utils.log_info("successfully load state dict for mapper")
+                utils.log_warn("run without pretrained weight")
     
     @classmethod
     def conf_init(cls, conf_file: str):

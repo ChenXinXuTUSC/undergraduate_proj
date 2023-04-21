@@ -84,17 +84,17 @@ if __name__ == "__main__":
             )
         ).F.detach().cpu().numpy()
         # only select key points' fcgf
-        keyfcgfs1 = fcgfs1[keyptsindices1].T
-        keyfcgfs2 = fcgfs2[keyptsindices2].T
+        keyfcgfs1 = fcgfs1[keyptsindices1]
+        keyfcgfs2 = fcgfs2[keyptsindices2]
 
         # step4: coarse ransac registration
         # use fpfh feature descriptor to compute matches
-        matches = ransac.init_matches(keyfcgfs1, keyfcgfs2)
+        matches = ransac.init_matches(keyfcgfs1.T, keyfcgfs2.T)
         correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.voxel_size * 1.5, T_gdth) # 上帝视角
         correct_valid_num = correct.astype(np.int32).sum()
         correct_total_num = correct.shape[0]
         tqdm.write(utils.log_info(f"gdth/init: {correct_valid_num:.2f}/{correct_total_num:.2f}={correct_valid_num/correct_total_num:.2f}", quiet=True))
         
-        matches_mat = np.concatenate([keyfcgfs1.T[matches[:, 0]], keyfcgfs2.T[matches[:, 1]]], axis=1)
+        matches_mat = np.concatenate([keyfcgfs1[matches[:, 0]], keyfcgfs2[matches[:, 1]]], axis=1)
         
         np.savez(f"{args.out_root}/{sample_name}", features=matches_mat, labels=correct)

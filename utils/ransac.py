@@ -125,12 +125,20 @@ def ransac_match(
 
     # concurrently find the inital T, using 'with' method
     # so that Executor.shutdown(wait=True) is not needed.
-    log_dbug("finding initial transformation T...")
+    # log_dbug("finding initial transformation T...")
     t1 = time.time()
+    try_times = 0
+    fall_back = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=ransac_conf.num_workers) as executor:
         Ts = []
-        while len(Ts) < 4:
-            proposal_generator_parall = (matches[np.random.choice(range(matches.shape[0]), ransac_conf.num_samples, replace=False)] for _ in range(ransac_conf.num_workers))
+        while len(Ts) < 2:
+            if ransac_conf.num_samples - fall_back < 3:
+                return None
+            if try_times == int(1e4):
+                try_times = 0
+                fall_back += 1
+            
+            proposal_generator_parall = (matches[np.random.choice(range(matches.shape[0]), ransac_conf.num_samples - fall_back, replace=False)] for _ in range(ransac_conf.num_workers))
             futures = [executor.submit(validator, proposal) for proposal in proposal_generator_parall]
             for future in concurrent.futures.as_completed(futures):
                 try:
@@ -140,15 +148,10 @@ def ransac_match(
                 if T is not None:
                     Ts.append(T)
                     break
-    
-    # for T in map(validator, proposal_generator_serial):
-    #     if T is not None:
-    #         # log_dbug(f"initial transformation found:\n{T}")
-    #         tmp_R = T[:3, :3]
-    #         # log_dbug(f"validate if R is  orthogonal:\n{np.dot(tmp_R, tmp_R.T)}")
-    #         break
+            
+            try_times += 1
     t2 = time.time()
-    log_info(f"finding coarse candidate T costs {t2-t1:.2f}s")
+    log_info(f"finding coarse candidate T costs {t2-t1:.2f}s with {ransac_conf.num_samples - fall_back} pairs")
     
     initial_T = None
     best_fitness = 0.0
