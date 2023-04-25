@@ -112,6 +112,11 @@ def ransac_match(
     -
     * registration_res - contains 4x4 SE(3) and nx2 corresponding feat set
     '''
+    if len(matches) < 3:
+        # useless matches
+        return None
+    ransac_conf.num_samples = min(len(matches), ransac_conf.num_samples)
+    
     if matches is None:
         matches = init_matches(srcfds, dstfds)
 
@@ -134,10 +139,10 @@ def ransac_match(
         while len(Ts) < 2:
             if ransac_conf.num_samples - fall_back < 3:
                 return None
-            if try_times == int(1e4):
+            if try_times == int(5e3):
                 try_times = 0
                 fall_back += 1
-            
+
             proposal_generator_parall = (matches[np.random.choice(range(matches.shape[0]), ransac_conf.num_samples - fall_back, replace=False)] for _ in range(ransac_conf.num_workers))
             futures = [executor.submit(validator, proposal) for proposal in proposal_generator_parall]
             for future in concurrent.futures.as_completed(futures):

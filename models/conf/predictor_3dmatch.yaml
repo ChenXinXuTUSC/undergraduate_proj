@@ -1,0 +1,4 @@
+in_channels: 16
+out_channels: 1
+mid_channels: [32, 64, 32]
+weight: "/home/hm/fuguiduo/code/ransac_registration/log/Predictor/i16o1/2023-04-20_02:09:18/weight/best.pth"

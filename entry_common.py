@@ -28,8 +28,9 @@ if __name__ == "__main__":
         root=args.data_root,
         shuffle=True,
         augment=True,
-        augdgre=30.0,
+        augdgre=90.0,
         augdist=4.0,
+        augjitr=0.00,
         args=args
     )
     
@@ -48,8 +49,8 @@ if __name__ == "__main__":
         "num_workers": 4,
         "num_samples": 6,
         "max_corrdist": args.voxel_size * 1.5,
-        "num_iter": 10000,
-        "num_vald": 1000,
+        "num_iter": 5000,
+        "num_vald": 500,
         "num_rfne": 25
     })
     
@@ -76,10 +77,10 @@ if __name__ == "__main__":
     
     for points1, points2, T_gdth, sample_name in dataloader:
         points1_o3d = utils.npy2o3d(points1)
-        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=30))
+        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
         points1 = utils.o3d2npy(points1_o3d)
         points2_o3d = utils.npy2o3d(points2)
-        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=30))
+        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
         points2 = utils.o3d2npy(points2_o3d)
         (
             fine_registrartion,

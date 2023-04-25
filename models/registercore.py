@@ -98,19 +98,6 @@ class RansacRegister:
         
         self.extracter = featextracter.load_extracter(extracter_conf)
         
-        # self.ransac_conf = edict({
-        #     "num_workers": ransac_workers_num,
-        #     "num_samples": ransac_samples_num,
-        #     "max_corrdist": voxel_size * ransac_corrdist_factor,
-        #     "num_iter":ransac_iter_num,
-        #     "num_vald":ransac_vald_num,
-        #     "num_rfne":ransac_rfne_num
-        # })
-        # self.checkr_conf=edict({
-        #     "max_corrdist":voxel_size * checkr_corrdist_factor,
-        #     "mutldist_factor":checkr_mutldist_factor,
-        #     "normdegr_thresh":checkr_normdegr_thresh
-        # })
         self.ransac_conf = ransac_conf
         self.checkr_conf = checkr_conf
 
@@ -129,7 +116,7 @@ class RansacRegister:
             self.predictor.eval()
         if self.mapper is not None and self.predictor is not None:
             self.use_filter = True
-        
+    
     # step1: voxel downsample
     def downsample(self, coords: np.ndarray):
         downsampled_coords, voxelized_coords, idx_dse2vox = utils.voxel_down_sample_gpt(
@@ -257,8 +244,6 @@ class RansacRegister:
             feats1, feats2,
             T_gdth
         )
-        utils.log_dbug(f"coarse corresponding pairs: {len(coarse_registration.correspondence_set)}")
-        
         if coarse_registration is None:
             return (
                 None,
@@ -266,6 +251,8 @@ class RansacRegister:
                 keyptsdict1, keyptsdict2,
                 totl_matches, gdth_matches
             )
+        utils.log_dbug(f"coarse corresponding pairs: {len(coarse_registration.correspondence_set)}")
+        
         # step5: fine registration
         fine_registrartion = self.fine_registrartion(
             downsampled_coords1, downsampled_coords2,

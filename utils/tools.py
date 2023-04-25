@@ -266,6 +266,31 @@ def voxel_down_sample_gpt(points: np.ndarray, voxel_size: float, use_avg: bool=F
     
     return voxel_points, voxel_uniques, None if use_avg else idx_old2new
 
+def unit_sphere_norm(points: np.ndarray, radius: float):
+    '''
+    Normalize point cloud to a sphere range given the
+    radius of the sphere.
+    
+    params:
+    -
+    * points(np.ndarray): xyz coords in shape(num, 3)
+    * radius(float): sphere radius
+    
+    return:
+    -
+    points(np.ndarray): xyz coords in shape(num, 3)
+    '''
+    if len(points.shape) > 2:
+        log_erro("shape of points should be (num, 3)")
+        raise ValueError("shape of points should be (num, 3)")
+    coords = points[:, :3]
+    centroid = np.mean(coords, axis=0)
+    coords -= centroid # move to origin
+    max_dist = np.max(np.sqrt(np.sum(coords ** 2, axis=1)))
+    coords = coords / max_dist * radius
+    points[:, :3] = coords
+    return points
+
 def dump1frag(
         points: np.ndarray,
         ply_vertex_type: np.dtype,
@@ -391,7 +416,7 @@ def solve_procrustes(P,Q):
     T[:3, 3] = t
     return T
 
-def apply_transformation(srcpts: np.ndarray, T: np.ndarray):
+def apply_transformation(srcpts: np.ndarray, T: np.ndarray, inverse: bool=False):
     import torch
 
     srcpts = copy.deepcopy(srcpts)
@@ -400,16 +425,23 @@ def apply_transformation(srcpts: np.ndarray, T: np.ndarray):
     if T.shape != (4, 4):
         log_warn("invalid transformation matrix")
         return srcpts
-    R = T[:3, :3]
-    t = T[:3, 3]
-    if np.fabs(np.linalg.det(np.dot(R, R.T)) - 1.0) > 1e-3:
+    if np.fabs(np.linalg.det(np.dot(T[:3, :3], T[:3, :3].T)) - 1.0) > 1e-3:
         log_warn("invalid rotation matrix, not orthogonal")
         return srcpts
-    srcpts[:, :3] = srcpts[:, :3] @ R + t
+    R = T[:3, :3]
+    t = T[:3, 3]
+    if inverse:
+        srcpts[:, :3] = (srcpts[:, :3] - t) @ R.T
+    else:
+        srcpts[:, :3] = srcpts[:, :3] @ R + t
+    
     if srcpts.shape[1] >= 9:
         # 该函数只能假设点云的特征排列是(x,y,z,r,g,b,u,v,w)
         # 即最后三个位置存放法向量方向
-        srcpts[:, 6:9] = srcpts[:, 6:9] @ R
+        if inverse:
+            srcpts[:, 6:9] = srcpts[:, 6:9] @ R.T
+        else:
+            srcpts[:, 6:9] = srcpts[:, 6:9] @ R
     return srcpts
 
 def resolve_axis_angle(T: np.ndarray, deg: bool):
@@ -506,6 +538,8 @@ def dump_registration_result(
     gdth_matches=None
 ):
     # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
+    points1[:,3:6] = [0, 100, 100]
+    points2[:,3:6] = [100, 100, 0]
     downsampled_coords1[keyptsidx1, 3:6] = np.array([255, 0, 0])
     downsampled_coords2[keyptsidx2, 3:6] = np.array([0, 255, 0])
     # show matches

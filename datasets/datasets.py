@@ -22,13 +22,15 @@ class PairDataset:
             shuffle: bool,
             augment: bool,
             augdgre: float,
-            augdist: float
+            augdist: float,
+            augjitr: float
         ) -> None:
         self.root = os.path.abspath(root)
         self.shuffle = shuffle
         self.augment = augment
         self.augdgre = augdgre
         self.augdist = augdist
+        self.augjitr = augjitr
 
 class ModelNet40Dense(PairDataset):
     def __init__(
@@ -38,9 +40,10 @@ class ModelNet40Dense(PairDataset):
             augment: bool, 
             augdgre: float, 
             augdist: float,
+            augjitr: float,
             args=None
         ) -> None:
-        super().__init__(root, shuffle, augment, augdgre, augdist)
+        super().__init__(root, shuffle, augment, augdgre, augdist, augjitr)
         self.files = []
         self.classes = []
         self.partition = None
@@ -74,6 +77,7 @@ class ModelNet40Dense(PairDataset):
         # points = np.asarray(lines)
 
         points = utils.ply2npy(sample_path)
+        # points = utils.unit_sphere_norm(points, 1.0)
         # add dummy rgb attributes, as point clouds
         # in ModelNet40 dataset don't have colors.
         points = np.concatenate((points[:,0:3], np.zeros((len(points), 3)), points[:,3:6]), axis=1)
@@ -87,7 +91,9 @@ class ModelNet40Dense(PairDataset):
         T_gdth = np.eye(4)
         if self.augment:
             T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
-            part2 = utils.apply_transformation(part2, T_gdth)
+            part1 = utils.apply_transformation(part1, T_gdth, inverse=True)
+            noise = np.random.normal(0.0, self.augjitr, size=(len(part1), 3))
+            part1[:, :3] += noise
         
         return part1, part2, T_gdth, sample_name
 
@@ -100,8 +106,9 @@ class ModelNet40Dense(PairDataset):
     def __iter__(self):
         return self
 
-    def split_by_plane(self, points: np.ndarray, overlap_distance: float):
-        '''split a point cloud by a plane with overlapping area.
+    def split_by_plane(self, points: np.ndarray, overlap_ratio: float):
+        '''
+        Split a point cloud by a plane with overlapping ratio.
         
         params
         -
@@ -123,16 +130,17 @@ class ModelNet40Dense(PairDataset):
         plane_normal /= np.linalg.norm(plane_normal)
         # Calculate the distance of each point in the point cloud to the plane  
         distances = np.dot(coords - plane_point, plane_normal)  
-        
+        max_dist_on_main_axis = np.max(distances) - np.min(distances)
+        threshold = max_dist_on_main_axis * overlap_ratio * 0.5
         # Split the point cloud into two separate arrays based on the sign of the distance  
-        positive_points = points[distances >= -overlap_distance]  
-        negative_points = points[distances <= +overlap_distance]  
+        positive_points = points[distances >= -threshold]  
+        negative_points = points[distances <= +threshold]  
         
         # Calculate the buffer zone around the plane  
         buffer_points = points[
             np.logical_and(
-                distances >= -overlap_distance, 
-                distances <= +overlap_distance
+                distances >= -threshold,
+                distances <= +threshold
             )
         ]  
         
@@ -146,9 +154,10 @@ class ThreeDMatchFCGF(PairDataset):
             augment: bool, 
             augdgre: float, 
             augdist: float,
+            augjitr: float,
             args=None
         ) -> None:
-        super().__init__(root, shuffle, augment, augdgre, augdist)
+        super().__init__(root, shuffle, augment, augdgre, augdist, augjitr)
         self.files = []
         self.overlap_dn = 0.0
         self.overlap_up = 1.0
@@ -218,9 +227,10 @@ class KITTIOdometry(PairDataset):
             augment: bool, 
             augdgre: float, 
             augdist: float,
+            augjitr: float,
             args=None
         ) -> None:
-        super().__init__(root, shuffle, augment, augdgre, augdist)
+        super().__init__(root, shuffle, augment, augdgre, augdist, augjitr)
 
         self.voxel_size = args.prefilter_size
         self.filter_radius = args.filter_radius

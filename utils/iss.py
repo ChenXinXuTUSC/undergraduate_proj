@@ -138,8 +138,8 @@ def iss_detect(points:np.ndarray, radius=0.25):
 
     eigval3_threshold = np.median(keypoints["eigval_3"].values)
     keypoints = keypoints.loc[
-        (keypoints["eigval_1"] / keypoints["eigval_2"] > 1.5) &
-        (keypoints["eigval_2"] / keypoints["eigval_3"] > 1.5) &
+        (keypoints["eigval_1"] / keypoints["eigval_2"] > 1.35) &
+        (keypoints["eigval_2"] / keypoints["eigval_3"] > 1.15) &
         keypoints["eigval_3"] > eigval3_threshold,
         keypoints.columns
     ]
