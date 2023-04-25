@@ -538,8 +538,8 @@ def dump_registration_result(
     gdth_matches=None
 ):
     # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
-    points1[:,3:6] = [0, 100, 100]
-    points2[:,3:6] = [100, 100, 0]
+    downsampled_coords1[:,3:6] = [0, 100, 100]
+    downsampled_coords2[:,3:6] = [100, 100, 0]
     downsampled_coords1[keyptsidx1, 3:6] = np.array([255, 0, 0])
     downsampled_coords2[keyptsidx2, 3:6] = np.array([0, 255, 0])
     # show matches

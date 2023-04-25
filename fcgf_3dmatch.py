@@ -53,7 +53,6 @@ if __name__ == "__main__":
 
     timer = utils.timer()
     for points1, points2, T_gdth, sample_name in dataloader:
-        utils.log_info(f"processing {sample_name}")
         points1_o3d = utils.npy2o3d(points1)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=30))
         points1 = utils.o3d2npy(points1_o3d)
@@ -138,6 +137,7 @@ if __name__ == "__main__":
 
         utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
         utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
+        utils.log_info(f"{sample_name}")
         # ============================= end of registration =============================
 
 
@@ -150,6 +150,4 @@ if __name__ == "__main__":
             downsampled_coords2, keyptsindices2,
             T_gdth, T_pred, gdth_matches
         )
-        utils.log_info(f"finish processing {sample_name}")
-        # break # only for test
-
+        # break # for test

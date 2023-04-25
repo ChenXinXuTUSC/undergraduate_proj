@@ -145,7 +145,7 @@
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--rooms", "bundlefusion-office3",
+                "--rooms", "bundlefusion-office0 bundlefusion-office1 bundlefusion-office2 bundlefusion-office3",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.3",
