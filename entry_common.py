@@ -27,10 +27,13 @@ if __name__ == "__main__":
     dataloader = available_datasets[args.data_type](
         root=args.data_root,
         shuffle=True,
-        augment=True,
-        augdgre=90.0,
-        augdist=4.0,
-        augjitr=0.00,
+        augdict= edict({
+            "augment": True,
+            "augdgre": 90.0,
+            "augdist": 4.0,
+            "augjitr": 0.01,
+            "augnois": 0
+        }),
         args=args
     )
     

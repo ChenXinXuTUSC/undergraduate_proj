@@ -14,36 +14,36 @@ class PairDataset:
     Class  derived  from  <PairDataset>   will    handle
     different input source, and return two point  clouds
     when itered by invoker(possibly  return  with  other 
-    info)
+    info).
+    
+    Augment dictionary contains several augment features
+        * augdgre - rotation(degree in float)
+        * augdist - translation(distance in float)
+        * augjitr - jitter(distance in float)
+        * augnois - environment noise(num of int)
+    
+    Augmentations will be applied only  if  boolean  var
+    'augment' is true.
     '''
     def __init__(
             self,
             root:str,
             shuffle: bool,
-            augment: bool,
-            augdgre: float,
-            augdist: float,
-            augjitr: float
+            augdict
         ) -> None:
         self.root = os.path.abspath(root)
         self.shuffle = shuffle
-        self.augment = augment
-        self.augdgre = augdgre
-        self.augdist = augdist
-        self.augjitr = augjitr
+        self.augdict = augdict
 
 class ModelNet40Dense(PairDataset):
     def __init__(
             self, 
             root: str, 
             shuffle: bool, 
-            augment: bool, 
-            augdgre: float, 
-            augdist: float,
-            augjitr: float,
+            augdict,
             args=None
         ) -> None:
-        super().__init__(root, shuffle, augment, augdgre, augdist, augjitr)
+        super().__init__(root, shuffle, augdict)
         self.files = []
         self.classes = []
         self.partition = None
@@ -89,11 +89,12 @@ class ModelNet40Dense(PairDataset):
             part2 = copy.deepcopy(part1)
 
         T_gdth = np.eye(4)
-        if self.augment:
-            T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
+        if self.augdict.augment:
+            augdict = self.augdict
+            T_gdth = utils.build_random_transform(augdict.augdgre, augdict.augdist)
             part1 = utils.apply_transformation(part1, T_gdth, inverse=True)
-            noise = np.random.normal(0.0, self.augjitr, size=(len(part1), 3))
-            part1[:, :3] += noise
+            part1[:, :3] += np.random.normal(0.0, augdict.augjitr, size=(len(part1), 3))
+            part1 = utils.add_env_noise(part1, augdict.augnois)
         
         return part1, part2, T_gdth, sample_name
 
@@ -151,13 +152,10 @@ class ThreeDMatchFCGF(PairDataset):
             self, 
             root: str, 
             shuffle: bool, 
-            augment: bool, 
-            augdgre: float, 
-            augdist: float,
-            augjitr: float,
+            augdict,
             args=None
         ) -> None:
-        super().__init__(root, shuffle, augment, augdgre, augdist, augjitr)
+        super().__init__(root, shuffle, augdict)
         self.files = []
         self.overlap_dn = 0.0
         self.overlap_up = 1.0
@@ -204,9 +202,12 @@ class ThreeDMatchFCGF(PairDataset):
         frag2 = np.concatenate((frag2, np.zeros((len(frag2), 3))), axis=1)
 
         T_gdth = np.eye(4)
-        if self.augment:
-            T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
-            frag2 = utils.apply_transformation(frag2, T_gdth)
+        if self.augdict.augment:
+            augdict = self.augdict
+            T_gdth = utils.build_random_transform(augdict.augdgre, augdict.augdist)
+            frag1 = utils.apply_transformation(frag1, T_gdth, inverse=True)
+            frag1[:, :3] += np.random.normal(0.0, augdict.augjitr, size=(len(frag1), 3))
+            frag1 = utils.add_env_noise(frag1, augdict.augnois)
 
         return frag1, frag2, T_gdth, sample_name
 

@@ -145,8 +145,8 @@
             "args": [
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--rooms", "bundlefusion-office0 bundlefusion-office1 bundlefusion-office2 bundlefusion-office3",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
+                "--rooms", "bundlefusion-apt0 bundlefusion-apt1 bundlefusion-apt2",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
@@ -176,12 +176,12 @@
             "args": [
                 "--data_type", "ModelNet40Dense",
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
-                "--classes", "guitar",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--partition", "0.00",
+                "--classes", "airplane",
+                "--partition", "0.30",
                 
-                "--key_radius_factor", "1.5",
+                "--key_radius_factor", "1.50",
                 "--fpfh_radius_factor", "1.75",
                 "--fpfh_nn", "50",
                 

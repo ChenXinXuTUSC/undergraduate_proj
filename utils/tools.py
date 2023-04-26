@@ -291,6 +291,39 @@ def unit_sphere_norm(points: np.ndarray, radius: float):
     points[:, :3] = coords
     return points
 
+def add_env_noise(points: np.ndarray, num_noise: int):
+    '''
+    Adding environment noise points to original points.
+    
+    params:
+    -
+    * points(np.ndarray): 3D coordinates in shape(num, 3).
+    * num_noise(int): Number of noise points to be added.
+    
+    return:
+    -
+    * points(np.ndarray): 3D coordinates in shape(num, 3).
+    '''
+    
+    if len(points.shape) > 2:
+        log_erro("shape of points should be (num, 3)")
+        raise ValueError("shape of points should be (num, 3)")
+    min_coord = np.min(points[:, :3], axis=0)
+    max_coord = np.max(points[:, :3], axis=0)
+    bounding_box_range = max_coord - min_coord
+    
+    # in case that points have features other than xyz coordinate
+    noise_points = np.zeros((num_noise, points.shape[1]))
+    noise_points[:, :3] = np.random.random(size=(num_noise, 3))
+    
+    # transform into bounding box range
+    noise_points[:, 0] = noise_points[:, 0] * bounding_box_range[0] + min_coord[0]
+    noise_points[:, 1] = noise_points[:, 1] * bounding_box_range[1] + min_coord[1]
+    noise_points[:, 2] = noise_points[:, 2] * bounding_box_range[2] + min_coord[2]
+    noise_points[:, :3] += np.random.normal(loc=0.0, scale=0.01, size=(num_noise, 3))
+    
+    return np.concatenate([points, noise_points], axis=0)
+
 def dump1frag(
         points: np.ndarray,
         ply_vertex_type: np.dtype,
@@ -548,7 +581,7 @@ def dump_registration_result(
             apply_transformation(downsampled_coords1, T_pred), downsampled_coords2, 
             gdth_matches, make_ply_vtx_type(True, True), 
             ply_edg_i1i2rgb,
-            f"{out_dir}/matches", f"{out_name}_matches.ply"
+            out_dir, f"{out_name}_matches.ply"
         )
     
     # contrastive comparison
@@ -556,13 +589,13 @@ def dump_registration_result(
     points2[:,3:6] = [255, 255, 0]
     fuse2frags(
         apply_transformation(points1, np.eye(4)), points2, 
-        make_ply_vtx_type(True, True), f"{out_dir}/orgl_contrastive", f"{out_name}_orgl.ply"
+        make_ply_vtx_type(True, True), out_dir, f"{out_name}_orgl.ply"
     )
     fuse2frags(
         apply_transformation(points1, T_pred), points2, 
-        make_ply_vtx_type(True, True), f"{out_dir}/pred_contrastive", f"{out_name}_pred.ply"
+        make_ply_vtx_type(True, True), out_dir, f"{out_name}_pred.ply"
     )
     fuse2frags(
         apply_transformation(points1, T_gdth), points2, 
-        make_ply_vtx_type(True, True), f"{out_dir}/gdth_contrastive", f"{out_name}_gdth.ply"
+        make_ply_vtx_type(True, True), out_dir, f"{out_name}_gdth.ply"
     )
