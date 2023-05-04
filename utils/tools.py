@@ -440,8 +440,10 @@ def solve_procrustes(P,Q):
     Qu = Q - Q_center # Q decentralized
 
     U, S, V = np.linalg.svd(np.dot(Pu.T, Qu), full_matrices=True, compute_uv=True)
-    R = np.dot(U, V)
-    # t = Q_center - np.dot(P_center, R)
+    S = np.eye(3)
+    S[2:2] = np.linalg.det(U @ V)
+    R = U @ S @ V
+    # R = np.dot(U, V)
     t = np.mean(Q - P @ R, axis=0) 
 
     T = np.eye(4)
@@ -598,4 +600,47 @@ def dump_registration_result(
     fuse2frags(
         apply_transformation(points1, T_gdth), points2, 
         make_ply_vtx_type(True, True), out_dir, f"{out_name}_gdth.ply"
+    )
+
+def rainbow_color_map(x: float):
+    '''
+    return an RGB tuple that represents the current rainbow value
+    according to x[0.0, 1.0]
+    
+    params
+    -
+    * x(float): value range from [0.0, 1.0].
+    
+    return
+    -
+    * color(tuple): (r,g,b) tuple
+    '''
+    h = max(min(x, 1.0), 0.0) * 360.0 / 60.0
+    s = 1.0
+    v = 1.0
+    
+    c = v * s
+    x = c * (1.0 - abs(h % 2.0 - 1.0))
+    m = v - c
+    
+    if h <= 1.0:
+        r, g, b = c, x, 0
+    elif h <= 2.0:
+        r, g, b = x, c, 0
+    elif h <= 3.0:
+        r, g, b = 0, c, x
+    elif h <= 4.0:
+        r, g, b = 0, x, c
+    elif h <= 5.0:
+        r, g, b = x, 0, c
+    elif h <= 6.0:
+        r, g, b = c, 0, x
+    else:
+        log_erro(f"invalid hue value: {h * 60.0:.2f}")
+        raise ValueError(f"invalid hue value: {h * 60.0:.2f}")
+
+    return (
+        int((r + m) * 255.0),
+        int((g + m) * 255.0),
+        int((b + m) * 255.0)
     )

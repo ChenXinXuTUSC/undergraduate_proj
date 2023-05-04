@@ -30,8 +30,8 @@ if __name__ == "__main__":
         augdict= edict({
             "augment": True,
             "augdgre": 90.0,
-            "augdist": 4.0,
-            "augjitr": 0.01,
+            "augdist": 5.0,
+            "augjitr": 0.00,
             "augnois": 0
         }),
         args=args
@@ -51,14 +51,14 @@ if __name__ == "__main__":
     ransac_conf = edict({
         "num_workers": 4,
         "num_samples": 6,
-        "max_corrdist": args.voxel_size * 1.5,
+        "max_corrdist": args.voxel_size * 1.25,
         "num_iter": 5000,
         "num_vald": 500,
         "num_rfne": 25
     })
     
     checkr_conf = edict({
-        "max_corrdist": args.voxel_size * 1.5,
+        "max_corrdist": args.voxel_size * 1.25,
         "mutldist_factor": 0.90,
         "normdegr_thresh": None
     })

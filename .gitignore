@@ -12,3 +12,7 @@ __pycache__/
 /results
 /statistic
 /data
+/*.png
+/*.ply
+/*.pth
+/*.txt

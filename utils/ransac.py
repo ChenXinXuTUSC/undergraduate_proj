@@ -64,11 +64,21 @@ def one_iter_match(
     
     srckts = srckts[:,:3]
     dstkts = dstkts[:,:3]
+    # 计算关键点之间的相互间隔
+    src_mnn_dist = pdist(srckts) # 只取用xyz坐标部分
+    dst_mnn_dist = pdist(dstkts) # 只取用xyz坐标部分
+    
+    # 所选择的关键点应该要足够散开，否则聚集在一起的关键点容易
+    # 产生局部最优解
+    is_scatter_enough = np.logical_and(
+        np.all(src_mnn_dist > checkr_conf.max_corrdist),
+        np.all(dst_mnn_dist > checkr_conf.max_corrdist),
+    )
+    if not is_scatter_enough:
+        return None
     # 使用pdist计算点集中两两点之间的欧氏距离，这是一个强假设
     # 对于很多匹配情况是无法通过的，比如一旦原点集有两个关键点
     # 匹配到了目标点集的同一个点，那么这个假设检测就无法通过。
-    src_mnn_dist = pdist(srckts) # 只取用xyz坐标部分
-    dst_mnn_dist = pdist(dstkts) # 只取用xyz坐标部分
     is_valid_mnn_match = np.all(
         np.logical_and(
             src_mnn_dist > dst_mnn_dist * checkr_conf.mutldist_factor,
@@ -132,6 +142,7 @@ def ransac_match(
     # so that Executor.shutdown(wait=True) is not needed.
     # log_dbug("finding initial transformation T...")
     t1 = time.time()
+    try_limit = int(1e4)
     try_times = 0
     fall_back = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=ransac_conf.num_workers) as executor:
@@ -139,8 +150,9 @@ def ransac_match(
         while len(Ts) < 2:
             if ransac_conf.num_samples - fall_back < 3:
                 return None
-            if try_times == int(5e3):
+            if try_times == try_limit:
                 try_times = 0
+                try_limit = try_limit // 2
                 fall_back += 1
 
             proposal_generator_parall = (matches[np.random.choice(range(matches.shape[0]), ransac_conf.num_samples - fall_back, replace=False)] for _ in range(ransac_conf.num_workers))
