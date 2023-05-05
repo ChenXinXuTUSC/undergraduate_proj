@@ -220,18 +220,15 @@ class ThreeDMatchFCGF(PairDataset):
     def __iter__(self):
         return self
 
-class KITTIOdometry(PairDataset):
+class KITTIOdometrySeq(PairDataset):
     def __init__(
             self, 
             root: str, 
             shuffle: bool, 
-            augment: bool, 
-            augdgre: float, 
-            augdist: float,
-            augjitr: float,
+            augdict,
             args=None
         ) -> None:
-        super().__init__(root, shuffle, augment, augdgre, augdist, augjitr)
+        super().__init__(root, shuffle, augdict)
 
         self.voxel_size = args.prefilter_size
         self.filter_radius = args.filter_radius
@@ -282,9 +279,10 @@ class KITTIOdometry(PairDataset):
         frag2, T2 = self.png2npy_onthefly(idx + 1)
 
         T_gdth = np.eye(4)
-        if self.augment:
-            T_gdth = utils.build_random_transform(self.augdgre, self.augdist)
-            frag2 = utils.apply_transformation(frag2, T_gdth)
+        if self.augdict.augment:
+            augdict = self.augdict
+            T_gdth = utils.build_random_transform(augdict.augdgre, augdict.augdist)
+            frag1 = utils.apply_transformation(frag1, T_gdth, inverse=True)
         
         sample_name = self.img_ids[idx] + "@" + self.img_idx[idx + 1]
         return frag1, frag2, T_gdth, sample_name
@@ -352,3 +350,48 @@ class KITTIOdometry(PairDataset):
         points_list = utils.radius_outlier_filter(points_list, self.filter_radius, self.filter_mustnn)
 
         return points_list, T
+
+class KITTIOdometryPly(PairDataset):
+    '''
+    Offline version of onthefly, preprocess the  data-
+    set from png sequences to ply files first.
+    '''
+    def __init__(
+        self,
+        root: str,
+        shuffle: bool,
+        augdict,
+        args=None
+    ) -> None:
+        super().__init__(root, False, augdict)
+        self.root = root
+        self.files = sorted(os.listdir(root))
+        
+        self.iterate_pos = -1
+    
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        if idx == len(self.files) - 1:
+            idx -= 1 # in case the last frame is chosen
+        frag1 = utils.ply2npy(os.path.join(self.root, self.files[idx]))
+        frag2 = utils.ply2npy(os.path.join(self.root, self.files[idx + 1]))
+        
+        T_gdth = np.eye(4)
+        if self.augdict.augment:
+            augdict = self.augdict
+            T_gdth = utils.build_random_transform(augdict.augdgre, augdict.augdist)
+            frag1 = utils.apply_transformation(frag1, T_gdth, inverse=True)
+        
+        sample_name = self.files[idx][:-4] + "@" + self.files[idx + 1][:-4]
+        return frag1, frag2, T_gdth, sample_name
+    
+    def __next__(self):
+        self.iterate_pos += 1
+        if self.iterate_pos >= len(self.files):
+            raise StopIteration
+        return self[self.iterate_pos]
+
+    def __iter__(self):
+        return self

@@ -205,29 +205,24 @@ def voxel_down_sample_gpt(points: np.ndarray, voxel_size: float, use_avg: bool=F
     
     params
     -
-    * points: np.ndarray.
-        Original dense point cloud data in shape
+    * points(np.ndarray): Original dense point cloud data in shape
         (num_pts, num_feats).
-    * voxel_size: float.
-        Unit size of down sample operation,  not
+    * voxel_size(float): Unit size of down sample  operation,  not
         radius but length of cubic.
-    * use_avg: bool.
-        Whether to use the average of all coords
-        in the same voxel or not. If false, choo
+    * use_avg(bool): Whether to use the average of all  coords  in 
+        the same voxel or not. If false, choo
         se one point in the voxel.
     
     return
     -
-    * down-sampled coords: np.ndarray.
+    * down-sampled coords(np.ndarray): .
         Down sampled points coordinates in shape
         (num_pts, num_feats).
-    * quantized coords: np.ndarray.
-        Quantized   coordinates   of  the  down-
-        sampled ones. (int, int, int).
-    * idx_dse2vox: np.ndarray.
-        If 'use_avg' is true, indices  of  dense
-        point cloud coords array to form the vox
-        array is provided.
+    * quantized coords(np.ndarray): Quantized coordinates  of  the
+        downsampled ones. (int, int, int).
+    * idx_dse2vox(np.ndarray): If 'use_avg' is  true,  indices  of
+        dense point cloud coords array to form the  vox  array  is
+        provided.
     '''
     # find the bounding box wrapping all points
     min_coord = np.min(points[:, :3], axis=0)
@@ -573,10 +568,13 @@ def dump_registration_result(
     gdth_matches=None
 ):
     # 给关键点上亮色，请放在其他点上色完成后再给关键点上色，否则关键点颜色会被覆盖
-    downsampled_coords1[:,3:6] = [0, 100, 100]
-    downsampled_coords2[:,3:6] = [100, 100, 0]
-    downsampled_coords1[keyptsidx1, 3:6] = np.array([255, 0, 0])
-    downsampled_coords2[keyptsidx2, 3:6] = np.array([0, 255, 0])
+    color1 = np.array([0, 255, 255])
+    color2 = np.array([255, 255, 0])
+    
+    downsampled_coords1[:,3:6] = color1
+    downsampled_coords2[:,3:6] = color2
+    downsampled_coords1[keyptsidx1, 3:6] = 255 - color1
+    downsampled_coords2[keyptsidx2, 3:6] = 255 - color2
     # show matches
     if gdth_matches is not None:
         fuse2frags_with_matches(
@@ -587,8 +585,8 @@ def dump_registration_result(
         )
     
     # contrastive comparison
-    points1[:,3:6] = [0, 255, 255]
-    points2[:,3:6] = [255, 255, 0]
+    points1[:,3:6] = color1
+    points2[:,3:6] = color2
     fuse2frags(
         apply_transformation(points1, np.eye(4)), points2, 
         make_ply_vtx_type(True, True), out_dir, f"{out_name}_orgl.ply"
@@ -644,3 +642,26 @@ def rainbow_color_map(x: float):
         int((g + m) * 255.0),
         int((b + m) * 255.0)
     )
+
+def draw_axis_rainbow(coords: np.ndarray, axis=np.ndarray):
+    '''
+    Return color mapping of given axis on rainbow hsv.
+    
+    params
+    -
+    * points(np.ndarray): xyz coordinates in shape(N,3)
+    * axis(np.ndarray): axis to be mapping
+    
+    return
+    -
+    * colos(np.ndarray): rgb color list
+    '''
+    axis /= np.linalg.norm(axis) # normalize to unit vector
+    
+    distances = np.dot(coords[:, :3], axis) # assume that the first 3 components are (x,y,z)
+    min_dist = np.min(distances)
+    max_dist = np.max(distances)
+    remap = (distances - min_dist) / (max_dist - min_dist)
+    
+    colors = np.array([list(rainbow_color_map(x)) for x in remap])
+    return colors

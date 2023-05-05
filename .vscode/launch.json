@@ -76,7 +76,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--data_type", "KITTIOdometry",
+                "--data_type", "KITTIOdometrySeq",
                 "--data_root", "/home/hm/fuguiduo/datasets/KITTI/odometry/dataset/sequences/00",
                 "--out_root", "${workspaceFolder}/results/fpfh_kittiodo",
                 "--step_size", "5",
@@ -145,12 +145,12 @@
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
-                "--rooms", "sun3d-mit_76_417-76-417b",
+                "--rooms", "7-scenes-redkitchen",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
                 
-                "--key_radius_factor", "1.005",
+                "--key_radius_factor", "2.00",
                 
                 "--extracter_type", "FCGFFeatExtracter",
                 "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
@@ -158,9 +158,11 @@
 
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3dmatch.yaml",
                 "--predictor_conf", "${workspaceFolder}/models/conf/predictor_3dmatch.yaml",
+
+                "--recompute_norm"
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
@@ -177,10 +179,10 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "car",
+                "--classes", "toilet",
                 "--partition", "0.00",
                 
-                "--key_radius_factor", "1.70",
+                "--key_radius_factor", "2.25",
                 "--fpfh_radius_factor", "1.75",
                 "--fpfh_nn", "50",
                 
@@ -188,9 +190,39 @@
 
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_modelnet40.yaml",
                 "--predictor_conf", "${workspaceFolder}/models/conf/predictor_modelnet40.yaml",
+
+                "--recompute_norm",
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
+        },
+        // entry common kitti
+        {
+            "name": "entry kittiodoply",
+            "type": "python",
+            "request": "launch",
+            "program": "entry_common.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "KITTIOdometryPly",
+                "--data_root", "/home/hm/fuguiduo/datasets/KITTI/odometry/dataset/ply/00",
+                "--out_root", "${workspaceFolder}/results/inlier_proposal",
+                "--voxel_size", "0.10",
+                
+                "--key_radius_factor", "1.65",
+                "--fpfh_radius_factor", "1.75",
+                "--fpfh_nn", "100",
+                
+                "--extracter_type", "FPFHFeatExtracter",
+
+                // "--mapper_conf", "${workspaceFolder}/models/conf/mapper_modelnet40.yaml",
+                // "--predictor_conf", "${workspaceFolder}/models/conf/predictor_modelnet40.yaml",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },

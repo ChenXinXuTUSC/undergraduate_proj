@@ -32,5 +32,8 @@ parser.add_argument("--prefilter_size", type=float, help="prefilter size for ste
 parser.add_argument("--filter_radius", type=float, help="radius to filter outliers")
 parser.add_argument("--filter_mustnn", type=int,   help="must neighbours num to filter outliers")
 
+# misc configuration
+parser.add_argument("--recompute_norm", action="store_true", help="whether recompute the normal")
+
 # MinkowskiEngine test
 args = parser.parse_args()

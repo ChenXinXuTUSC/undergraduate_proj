@@ -257,7 +257,7 @@ class RansacRegister:
         fine_registrartion = self.fine_registrartion(
             downsampled_coords1, downsampled_coords2,
             coarse_registration,
-            10
+            25
         )
         
         return (
@@ -299,6 +299,6 @@ class RansacRegister:
                 ], axis=1)
             )
             manifold_coords = self.mapper(concat_feats.unsqueeze(0).transpose(1,2).to(self.device).float())
-            predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.65
+            predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.60
         
         return matches[predicted_mask], predicted_mask, manifold_coords.cpu().numpy()

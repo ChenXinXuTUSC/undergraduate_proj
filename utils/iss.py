@@ -87,13 +87,13 @@ def iss_detect(points:np.ndarray, radius=0.25):
             if not neighbor_idx in num_neighbors_cache:
                 neigneig_num, _, _ = search_tree.search_radius_vector_3d(points[neighbor_idx], radius)
                 num_neighbors_cache[neighbor_idx] = neigneig_num - 1 if neigneig_num > 1 else 1
-            weights.append(1.0/num_neighbors_cache[neighbor_idx])
+            weights.append(num_neighbors_cache[neighbor_idx])
             distans.append(points[neighbor_idx] - center)
         weights = np.array(weights)
         distans = np.array(distans)
         # 这里的协方差矩阵指的是变量维度之间的协方差，不是样本之间的协方差
         # 因为只有坐标(x,y,z)三个维度，那么三个变量维度的协方差矩阵就是3x3的
-        covariance = np.dot(distans.T, np.dot(np.diag(weights), distans)) / weights.sum() # ??? 3x3 instead of nxn
+        covariance = np.dot(distans.T, np.dot(np.diag(weights), distans)) / weights.sum()
         eigval, eigvec = np.linalg.eig(covariance)
         eigval = eigval[eigval.argsort()[::-1]] # 降序排序，原argsort是返回从小到大的元素索引
         
@@ -138,8 +138,8 @@ def iss_detect(points:np.ndarray, radius=0.25):
 
     eigval3_threshold = np.median(keypoints["eigval_3"].values)
     keypoints = keypoints.loc[
-        (keypoints["eigval_1"] / keypoints["eigval_2"] > 1.35) &
-        (keypoints["eigval_2"] / keypoints["eigval_3"] > 1.15) &
+        (keypoints["eigval_1"] / keypoints["eigval_2"] < 2.75) &
+        (keypoints["eigval_2"] / keypoints["eigval_3"] < 2.75) &
         keypoints["eigval_3"] > eigval3_threshold,
         keypoints.columns
     ]

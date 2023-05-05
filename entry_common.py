@@ -21,7 +21,8 @@ import models
 # step6: ICP optimized transformation [R,t]
 
 if __name__ == "__main__":
-    args = edict(vars(config.args))
+    # args = edict(vars(config.args))
+    args = config.args
 
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args.data_type](
@@ -79,12 +80,13 @@ if __name__ == "__main__":
     )
     
     for points1, points2, T_gdth, sample_name in dataloader:
-        points1_o3d = utils.npy2o3d(points1)
-        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
-        points1 = utils.o3d2npy(points1_o3d)
-        points2_o3d = utils.npy2o3d(points2)
-        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
-        points2 = utils.o3d2npy(points2_o3d)
+        if args.recompute_norm:
+            points1_o3d = utils.npy2o3d(points1)
+            points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
+            points1 = utils.o3d2npy(points1_o3d)
+            points2_o3d = utils.npy2o3d(points2)
+            points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
+            points2 = utils.o3d2npy(points2_o3d)
         (
             fine_registrartion,
             downsampled_coords1, downsampled_coords2,
