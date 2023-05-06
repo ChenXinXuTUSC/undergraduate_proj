@@ -179,7 +179,7 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "toilet",
+                "--classes", "flower_pot",
                 "--partition", "0.00",
                 
                 "--key_radius_factor", "2.25",

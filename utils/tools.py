@@ -573,8 +573,8 @@ def dump_registration_result(
     
     downsampled_coords1[:,3:6] = color1
     downsampled_coords2[:,3:6] = color2
-    downsampled_coords1[keyptsidx1, 3:6] = 255 - color1
-    downsampled_coords2[keyptsidx2, 3:6] = 255 - color2
+    downsampled_coords1[keyptsidx1, 3:6] = np.array([255, 0, 0])
+    downsampled_coords2[keyptsidx2, 3:6] = np.array([0, 0, 255])
     # show matches
     if gdth_matches is not None:
         fuse2frags_with_matches(
