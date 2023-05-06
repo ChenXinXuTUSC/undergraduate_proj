@@ -49,7 +49,7 @@ class RansacRegister:
         self,
         voxel_size: float,
         # keypoint detector
-        detector_conf,
+        detecter_conf,
         # feature extracter
         extracter_conf,
         # inlier proposal
@@ -97,7 +97,7 @@ class RansacRegister:
         from . import featextracter
         self.voxel_size = voxel_size
         
-        self.detector_conf = detector_conf
+        self.detecter_conf = detecter_conf
         
         self.extracter = featextracter.load_extracter(extracter_conf)
         
@@ -133,9 +133,9 @@ class RansacRegister:
     def keypoints_detect(self, downsampled_coords: np.ndarray):
         keyptsdict = utils.iss_detect(
             downsampled_coords,
-            self.detector_conf.key_radius,
-            self.detector_conf.lambda1,
-            self.detector_conf.lambda2
+            self.detecter_conf.key_radius,
+            self.detecter_conf.lambda1,
+            self.detecter_conf.lambda2
         )
         return keyptsdict
     

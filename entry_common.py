@@ -70,7 +70,7 @@ if __name__ == "__main__":
     register = models.registercore.RansacRegister(
         voxel_size=args.voxel_size,
         # keypoint detector
-        detector_conf=detecter_conf,
+        detecter_conf=detecter_conf,
         # feature extracter
         extracter_conf=extracter_conf,
         # inlier proposal

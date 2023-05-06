@@ -573,8 +573,8 @@ def dump_registration_result(
     
     downsampled_coords1[:,3:6] = color1
     downsampled_coords2[:,3:6] = color2
-    downsampled_coords1[keyptsidx1, 3:6] = np.array([255, 0, 0])
-    downsampled_coords2[keyptsidx2, 3:6] = np.array([0, 255, 0])
+    downsampled_coords1[keyptsidx1, 3:6] = np.array([255, 0, 255])
+    downsampled_coords2[keyptsidx2, 3:6] = np.array([255, 0, 0])
     # show matches
     if gdth_matches is not None:
         fuse2frags_with_matches(
@@ -585,8 +585,8 @@ def dump_registration_result(
         )
     
     # contrastive comparison
-    points1[:,3:6] = color1
-    points2[:,3:6] = color2
+    points1[:,3:6] = color1 * 0.75 # darken the backgroud
+    points2[:,3:6] = color2 * 0.75 # darken the backgroud
     fuse2frags(
         apply_transformation(points1, np.eye(4)), points2, 
         make_ply_vtx_type(True, True), out_dir, f"{out_name}_orgl.ply"
