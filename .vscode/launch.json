@@ -145,20 +145,23 @@
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
-                "--rooms", "7-scenes-redkitchen",
+                "--rooms", "sun3d-hotel_nips2012-nips_4",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.3",
                 "--overlap_up", "0.5",
-                
-                "--key_radius_factor", "2.00",
-                
+                // detecter
+                "--key_radius_factor", "2.25",
+                "--lambda1", "2.75",
+                "--lambda2", "2.50",
+                // extracter
                 "--extracter_type", "FCGFFeatExtracter",
                 "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
                 "--fcgf_model", "ResUNetBN2C",
-
+                // classifier
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3dmatch.yaml",
                 "--predictor_conf", "${workspaceFolder}/models/conf/predictor_3dmatch.yaml",
-
+                "--positive_thresh", "0.75",
+                // misc
                 "--recompute_norm"
             ],
             "env": {
@@ -179,18 +182,21 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "flower_pot",
+                "--classes", "radio",
                 "--partition", "0.00",
-                
+                // detecter
                 "--key_radius_factor", "2.25",
+                "--lambda1", "2.75",
+                "--lambda2", "2.50",
+                // extracter
+                "--extracter_type", "FPFHFeatExtracter",
                 "--fpfh_radius_factor", "1.75",
                 "--fpfh_nn", "50",
-                
-                "--extracter_type", "FPFHFeatExtracter",
-
+                // classifier
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_modelnet40.yaml",
-                "--predictor_conf", "${workspaceFolder}/models/conf/predictor_modelnet40.yaml",
-
+                "--predicter_conf", "${workspaceFolder}/models/conf/predictor_modelnet40.yaml",
+                "--positive_thresh", "0.70",
+                // misc
                 "--recompute_norm",
             ],
             "env": {
@@ -242,12 +248,12 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
-        // train identifier
+        // train predicter
         {
             "name": "train predictor",
             "type": "python",
             "request": "launch",
-            "program": "train_predictor.py",
+            "program": "train_predicter.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

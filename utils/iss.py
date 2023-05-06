@@ -30,7 +30,12 @@ def radius_outlier_filter(points:np.ndarray, radius:float, must_neighbors:int):
             pts_idx_after.append(i)
     return points[pts_idx_after]
 
-def iss_detect(points:np.ndarray, radius=0.25):
+def iss_detect(
+    points:np.ndarray,
+    radius=0.25,
+    lambda1=2.75,
+    lambda2=2.65
+    ):
     '''Detect point cloud key points using Intrinsic Shape Signature(ISS)
 
 
@@ -138,8 +143,8 @@ def iss_detect(points:np.ndarray, radius=0.25):
 
     eigval3_threshold = np.median(keypoints["eigval_3"].values)
     keypoints = keypoints.loc[
-        (keypoints["eigval_1"] / keypoints["eigval_2"] < 2.75) &
-        (keypoints["eigval_2"] / keypoints["eigval_3"] < 2.75) &
+        (keypoints["eigval_1"] / keypoints["eigval_2"] < lambda1) &
+        (keypoints["eigval_2"] / keypoints["eigval_3"] < lambda2) &
         keypoints["eigval_3"] > eigval3_threshold,
         keypoints.columns
     ]

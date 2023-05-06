@@ -7,16 +7,20 @@ parser.add_argument("--out_root", type=str, default="./results", help="dir to st
 
 # register model configurations
 parser.add_argument("--voxel_size", type=float, required=True, help="voxel size for down sample and ICP registration")
+# detector configuration
 parser.add_argument("--key_radius_factor", type=float, default=1.0, help="scale factor on voxel size for key point detection")
+parser.add_argument("--positive_thresh", type=float, default=0.5, help="whether to select a pair as postive according to its score")
+parser.add_argument("--lambda1", type=float, default=2.75, help="ISS eigen value compare ratio 1")
+parser.add_argument("--lambda2", type=float, default=2.65, help="ISS eigen value compare ratio 2")
+# extractor configuration
 parser.add_argument("--fpfh_radius_factor", type=float, default=1.0, help="scale factor on voxel size for feature extration")
 parser.add_argument("--fpfh_nn", type=int, default=30, help="neighbour num used in each feature generation of fpfh")
-
 parser.add_argument("--extracter_type", type=str, default="FPFHFeatExtracter", help="feature extracter model class name")
 parser.add_argument("--extracter_weight", type=str, default="", help="path to the model state dict")
 parser.add_argument("--fcgf_model", type=str, default="ResUNetBN2C", help="class name of feature extraction model")
-
+# classifier configuration
 parser.add_argument("--mapper_conf", type=str, default="", help="path to mapper conf yaml")
-parser.add_argument("--predictor_conf", type=str, default="", help="path to predictor conf yaml")
+parser.add_argument("--predicter_conf", type=str, default="", help="path to predictor conf yaml")
 
 # dataset related configurations
 # modelnet40

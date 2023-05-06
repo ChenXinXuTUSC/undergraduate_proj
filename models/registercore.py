@@ -49,15 +49,16 @@ class RansacRegister:
         self,
         voxel_size: float,
         # keypoint detector
-        key_radius: float,
+        detector_conf,
         # feature extracter
         extracter_conf,
         # inlier proposal
         mapper_conf: str,
-        predictor_conf: str,
+        predicter_conf: str,
         # optimization
         ransac_conf,
-        checkr_conf
+        checkr_conf,
+        misc=None
     ) -> None:
         '''
         param
@@ -91,10 +92,12 @@ class RansacRegister:
         * T_gdth: np.ndarray.
             Ground truth trasformation T[R,t]
         '''
+        self.misc = misc # other configuration
+        
         from . import featextracter
         self.voxel_size = voxel_size
         
-        self.key_radius = key_radius
+        self.detector_conf = detector_conf
         
         self.extracter = featextracter.load_extracter(extracter_conf)
         
@@ -103,18 +106,18 @@ class RansacRegister:
 
         # filter configuration
         self.mapper = None
-        self.predictor = None
+        self.predicter = None
         self.use_filter = False
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if os.path.exists(mapper_conf):
             self.mapper = inlier_proposal.mapper.Mapper.conf_init(mapper_conf)
             self.mapper.to(self.device)
             self.mapper.eval()
-        if os.path.exists(predictor_conf):
-            self.predictor = inlier_proposal.predictor.Predictor.conf_init(predictor_conf)
-            self.predictor.to(self.device)
-            self.predictor.eval()
-        if self.mapper is not None and self.predictor is not None:
+        if os.path.exists(predicter_conf):
+            self.predicter = inlier_proposal.predictor.Predictor.conf_init(predicter_conf)
+            self.predicter.to(self.device)
+            self.predicter.eval()
+        if self.mapper is not None and self.predicter is not None:
             self.use_filter = True
     
     # step1: voxel downsample
@@ -128,7 +131,12 @@ class RansacRegister:
     
     # step2: detect keypoints
     def keypoints_detect(self, downsampled_coords: np.ndarray):
-        keyptsdict = utils.iss_detect(downsampled_coords, self.key_radius)
+        keyptsdict = utils.iss_detect(
+            downsampled_coords,
+            self.detector_conf.key_radius,
+            self.detector_conf.lambda1,
+            self.detector_conf.lambda2
+        )
         return keyptsdict
     
     # step3: extract feature descriptors of all points
@@ -299,6 +307,6 @@ class RansacRegister:
                 ], axis=1)
             )
             manifold_coords = self.mapper(concat_feats.unsqueeze(0).transpose(1,2).to(self.device).float())
-            predicted_mask = (self.predictor(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > 0.55
+            predicted_mask = (self.predicter(manifold_coords).transpose(1,2).squeeze().sigmoid().cpu().numpy()) > self.misc.positive_thresh
         
         return matches[predicted_mask], predicted_mask, manifold_coords.cpu().numpy()

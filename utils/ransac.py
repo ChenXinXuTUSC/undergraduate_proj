@@ -71,8 +71,8 @@ def one_iter_match(
     # 所选择的关键点应该要足够散开，否则聚集在一起的关键点容易
     # 产生局部最优解
     is_scatter_enough = np.logical_and(
-        np.all(src_mnn_dist > checkr_conf.max_corrdist * 1.5),
-        np.all(dst_mnn_dist > checkr_conf.max_corrdist * 1.5),
+        np.all(src_mnn_dist > checkr_conf.max_corrdist * 2.0),
+        np.all(dst_mnn_dist > checkr_conf.max_corrdist * 2.0),
     )
     if not is_scatter_enough:
         return None

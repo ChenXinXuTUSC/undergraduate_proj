@@ -39,6 +39,11 @@ if __name__ == "__main__":
     )
     
     # model configurations
+    detecter_conf = edict({
+        "key_radius": args.voxel_size * args.key_radius_factor,
+        "lambda1": args.lambda1,
+        "lambda2": args.lambda2
+    })
     extracter_conf = edict({
         "extracter_type": args.extracter_type,
         # for fcgf
@@ -48,7 +53,6 @@ if __name__ == "__main__":
         "feat_radius": args.voxel_size * args.fpfh_radius_factor,
         "feat_neighbour_num": args.fpfh_nn
     })
-    
     ransac_conf = edict({
         "num_workers": 4,
         "num_samples": 6,
@@ -57,7 +61,6 @@ if __name__ == "__main__":
         "num_vald": 500,
         "num_rfne": 25
     })
-    
     checkr_conf = edict({
         "max_corrdist": args.voxel_size * 1.25,
         "mutldist_factor": 0.90,
@@ -67,16 +70,18 @@ if __name__ == "__main__":
     register = models.registercore.RansacRegister(
         voxel_size=args.voxel_size,
         # keypoint detector
-        key_radius=args.voxel_size * args.key_radius_factor,
+        detector_conf=detecter_conf,
         # feature extracter
         extracter_conf=extracter_conf,
         # inlier proposal
         mapper_conf=args.mapper_conf,
-        predictor_conf=args.predictor_conf,
+        predicter_conf=args.predicter_conf,
         
         # optimization
         ransac_conf=ransac_conf,
-        checkr_conf=checkr_conf
+        checkr_conf=checkr_conf,
+        
+        misc=args
     )
     
     for points1, points2, T_gdth, sample_name in dataloader:
