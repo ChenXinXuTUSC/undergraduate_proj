@@ -38,7 +38,6 @@ def snapshot(
     
     return fig
 
-
 def save_state_dict(state, out_dir:str, out_name: str):
     try:
         torch.save(state, f"{out_dir}/{out_name}.pth")
@@ -50,10 +49,10 @@ def save_state_dict(state, out_dir:str, out_name: str):
 if __name__ == "__main__":    
     train_loader = torch.utils.data.DataLoader(
         datasets.train_data.MatchingFeats(
-            "./data/fpfh_matches",
+            "./data/fcgf_matches",
             64,
             postive_ratio=0.1,
-            filter_strs=["airplane", "flower_pot", "guitar"]
+            filter_strs=["sun3d", "analysis-by-synthesis"]
         ),
         num_workers=2,
         batch_size=8,
@@ -61,7 +60,7 @@ if __name__ == "__main__":
     )
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/conf/mapper.yaml")
+    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/conf/mapper_3dmatch.yaml")
     classifier.to(device)
     classifier.train()
     optimizer = torch.optim.Adam(classifier.parameters(), 1e-2)

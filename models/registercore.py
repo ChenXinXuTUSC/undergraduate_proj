@@ -177,9 +177,9 @@ class RansacRegister:
             plane_coords = np.reshape(manifold_coords, (-1, self.mapper.out_channels))
             # snapshot(plane_coords, correct,        d=2, out_name="gdth")
             # snapshot(plane_coords, predicted_mask, d=2, out_name="pred")
-            correct_valid_num = np.logical_and(correct, predicted_mask).sum()
-            correct_total_num = matches.shape[0]
-            utils.log_dbug(f"gdth/pred: {correct_valid_num:d}/{correct_total_num:d}={correct_valid_num/correct_total_num:.3f}")
+            num_valid_matches = np.logical_and(correct, predicted_mask).sum()
+            num_total_matches = matches.shape[0]
+            utils.log_dbug(f"gdth/pred: {num_valid_matches:d}/{num_total_matches:d}={num_valid_matches/num_total_matches:.3f}")
         
         coarse_registration = utils.ransac_match(
             keycoords1, keycoords2,

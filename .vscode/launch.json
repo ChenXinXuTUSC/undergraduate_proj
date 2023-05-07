@@ -264,7 +264,7 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
-        // open3d benchmard
+        // open3d benchmark
         {
             "name": "open3d testbench",
             "type": "python",
