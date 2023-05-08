@@ -168,8 +168,10 @@ class ThreeDMatchFCGF(PairDataset):
         # npzs = [os.path.join(root, "npz", file) for file in sorted(os.listdir(os.path.join(root, "npz")))]
         txts = [file for file in sorted(os.listdir(os.path.join(self.root, "txt")))]
         for txt in tqdm(txts, total=len(txts), ncols=100, desc=self.__class__.__name__):
-            if len(self.rooms_included) > 0 and txt.split("@")[0] not in self.rooms_included:
+            room = txt.split("@")[0]
+            if len(self.rooms_included) > 0 and len([1 for must in self.rooms_included if must in room]) == 0:
                 continue
+            
             with open(os.path.join(self.root, "txt", txt), 'r') as f:
                 lines = f.readlines()
                 lines = [line.strip().split(' ') for line in lines]

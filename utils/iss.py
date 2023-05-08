@@ -71,9 +71,9 @@ def iss_detect(
         "x": [],
         "y": [],
         "z": [],
-        "eigval_1": [], # 特征值1
-        "eigval_2": [], # 特征值2
-        "eigval_3": []  # 特征值3
+        "eigval1": [], # 特征值1
+        "eigval2": [], # 特征值2
+        "eigval3": []  # 特征值3
     }
 
     # first construct a search tree
@@ -110,9 +110,9 @@ def iss_detect(
         keypoints["x"].append(center[0])
         keypoints["y"].append(center[1])
         keypoints["z"].append(center[2])
-        keypoints["eigval_1"].append(eigval[0])
-        keypoints["eigval_2"].append(eigval[1])
-        keypoints["eigval_3"].append(eigval[2])
+        keypoints["eigval1"].append(eigval[0])
+        keypoints["eigval2"].append(eigval[1])
+        keypoints["eigval3"].append(eigval[2])
     
     # 非极大值抑制，并不是每个点都需要成为关键点
     suppressed_points_indicies = set()
@@ -141,16 +141,16 @@ def iss_detect(
     # 分布致密，类似于细椭球，就像标枪一样，类似于一条直线。
     # 而直线也不是一个好的特征。
 
-    eigval3_threshold = np.median(keypoints["eigval_3"].values)
+    eigval3_threshold = np.median(keypoints["eigval3"].values)
     keypoints = keypoints.loc[
-        (keypoints["eigval_1"] / keypoints["eigval_2"] < lambda1) &
-        (keypoints["eigval_2"] / keypoints["eigval_3"] < lambda2) &
-        keypoints["eigval_3"] > eigval3_threshold,
+        (keypoints["eigval1"] / keypoints["eigval2"] < lambda1) &
+        (keypoints["eigval2"] / keypoints["eigval3"] < lambda2) &
+        keypoints["eigval3"] > eigval3_threshold,
         keypoints.columns
     ]
 
     # return the keypoints in decreasing eigen value order
-    keypoints = keypoints.sort_values("eigval_3", axis=0, ascending=False, ignore_index=True)
+    keypoints = keypoints.sort_values("eigval3", axis=0, ascending=False, ignore_index=True)
     return keypoints
 
 def iss_detect_copy(pcd: o3d.geometry.PointCloud, radius: float):

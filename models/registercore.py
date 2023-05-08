@@ -137,7 +137,12 @@ class RansacRegister:
             self.detecter_conf.lambda1,
             self.detecter_conf.lambda2
         )
-        return keyptsdict
+        return (
+            keyptsdict["id"].values,
+            keyptsdict["eigval1"].values,
+            keyptsdict["eigval2"].values,
+            keyptsdict["eigval3"].values
+        ) 
     
     # step3: extract feature descriptors of all points
     def extract_features(self, downsampled_coords: np.ndarray, voxelized_coords: np.ndarray):
@@ -180,6 +185,8 @@ class RansacRegister:
             num_valid_matches = np.logical_and(correct, predicted_mask).sum()
             num_total_matches = matches.shape[0]
             utils.log_dbug(f"gdth/pred: {num_valid_matches:d}/{num_total_matches:d}={num_valid_matches/num_total_matches:.3f}")
+            if num_valid_matches / num_total_matches < 0.1 or num_valid_matches < 3:
+                return None, totl_matches, gdth_matches
         
         coarse_registration = utils.ransac_match(
             keycoords1, keycoords2,
@@ -238,8 +245,8 @@ class RansacRegister:
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = self.downsample(coords2)
         
         # step2: detect iss key points
-        keyptsdict1 = self.keypoints_detect(downsampled_coords1)
-        keyptsdict2 = self.keypoints_detect(downsampled_coords2)
+        keyptsidx1, _, _, _ = self.keypoints_detect(downsampled_coords1)
+        keyptsidx2, _, _, _ = self.keypoints_detect(downsampled_coords2)
         
         # step3: compute feature descriptors for all points
         feats1 = self.extract_features(downsampled_coords1, voxelized_coords1)
@@ -248,7 +255,7 @@ class RansacRegister:
         # step4: coarse registration
         coarse_registration, totl_matches, gdth_matches = self.coarse_registration(
             downsampled_coords1, downsampled_coords2,
-            keyptsdict1["id"].values, keyptsdict2["id"].values,
+            keyptsidx1, keyptsidx2,
             feats1, feats2,
             T_gdth
         )
@@ -256,22 +263,22 @@ class RansacRegister:
             return (
                 None,
                 pcd1[idx_dse2vox1], pcd2[idx_dse2vox2],
-                keyptsdict1, keyptsdict2,
+                keyptsidx1, keyptsidx2,
                 totl_matches, gdth_matches
             )
-        utils.log_dbug(f"coarse corresponding pairs: {len(coarse_registration.correspondence_set)}")
+        # utils.log_dbug(f"coarse corresponding pairs: {len(coarse_registration.correspondence_set)}")
         
         # step5: fine registration
         fine_registrartion = self.fine_registrartion(
             downsampled_coords1, downsampled_coords2,
             coarse_registration,
-            25
+            50
         )
         
         return (
             fine_registrartion,
             pcd1[idx_dse2vox1], pcd2[idx_dse2vox2],
-            keyptsdict1, keyptsdict2,
+            keyptsidx1, keyptsidx2,
             totl_matches, gdth_matches
         )
 

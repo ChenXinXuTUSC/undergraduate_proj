@@ -436,7 +436,7 @@ def solve_procrustes(P,Q):
 
     U, S, V = np.linalg.svd(np.dot(Pu.T, Qu), full_matrices=True, compute_uv=True)
     S = np.eye(3)
-    S[2:2] = np.linalg.det(U @ V)
+    S[2, 2] = np.linalg.det(U @ V)
     R = U @ S @ V
     # R = np.dot(U, V)
     t = np.mean(Q - P @ R, axis=0) 

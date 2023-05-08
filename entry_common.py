@@ -55,15 +55,15 @@ if __name__ == "__main__":
     })
     ransac_conf = edict({
         "num_workers": 4,
-        "num_samples": 6,
+        "num_samples": 8,
         "max_corrdist": args.voxel_size * 1.25,
-        "num_iter": 5000,
-        "num_vald": 500,
+        "num_iter": 7500,
+        "num_vald": 750,
         "num_rfne": 25
     })
     checkr_conf = edict({
         "max_corrdist": args.voxel_size * 1.25,
-        "mutldist_factor": 0.90,
+        "mutldist_factor": 0.85,
         "normdegr_thresh": None
     })
     
@@ -85,6 +85,7 @@ if __name__ == "__main__":
     )
     
     for points1, points2, T_gdth, sample_name in dataloader:
+        utils.log_info(sample_name)
         if args.recompute_norm:
             points1_o3d = utils.npy2o3d(points1)
             points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
@@ -103,8 +104,19 @@ if __name__ == "__main__":
             continue
         
         T_pred = fine_registrartion.transformation
-        utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
-        utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
+        raxis_pred, rdegr_pred = utils.resolve_axis_angle(T_pred, deg=True)
+        raxis_gdth, rdegr_gdth = utils.resolve_axis_angle(T_gdth, deg=True)
+        trans_pred, trans_gdth = T_pred[:3,3], T_gdth[:3,3]
+        print(utils.get_colorstr(
+                fore=utils.FORE_CYN, back=utils.BACK_ORG,
+                msg="raxis\trdegr\ttrans"
+            )
+        )
+        print(utils.get_colorstr(
+                fore=utils.FORE_PRP, back=utils.BACK_ORG,
+                msg=f"{np.dot(raxis_gdth, raxis_pred):5.3f}\t{abs(rdegr_gdth - rdegr_pred):5.3f}\t{[float(f'{x:.2f}') for x in trans_gdth - trans_pred]}"
+            )
+        )
         
         utils.dump_registration_result(
             args.out_root, "output",

@@ -62,8 +62,8 @@ def one_iter_match(
         if not is_valid_normal_match:
             return None
     
-    srckts = srckts[:,:3]
-    dstkts = dstkts[:,:3]
+    srckts = srckts[:, :3]
+    dstkts = dstkts[:, :3]
     # 计算关键点之间的相互间隔
     src_mnn_dist = pdist(srckts) # 只取用xyz坐标部分
     dst_mnn_dist = pdist(dstkts) # 只取用xyz坐标部分
@@ -71,8 +71,8 @@ def one_iter_match(
     # 所选择的关键点应该要足够散开，否则聚集在一起的关键点容易
     # 产生局部最优解
     is_scatter_enough = np.logical_and(
-        np.all(src_mnn_dist > checkr_conf.max_corrdist * 3.0),
-        np.all(dst_mnn_dist > checkr_conf.max_corrdist * 3.0),
+        np.all(src_mnn_dist > checkr_conf.max_corrdist * 5.0 / len(proposal)),
+        np.all(dst_mnn_dist > checkr_conf.max_corrdist * 5.0 / len(proposal)),
     )
     if not is_scatter_enough:
         return None
@@ -148,8 +148,8 @@ def ransac_match(
     with concurrent.futures.ThreadPoolExecutor(max_workers=ransac_conf.num_workers) as executor:
         Ts = []
         while len(Ts) < 2:
-            if ransac_conf.num_samples - fall_back < 3:
-                return None
+            if ransac_conf.num_samples - fall_back < 4:
+                break
             if try_times == try_limit:
                 try_times = 0
                 try_limit = try_limit // 2
@@ -167,6 +167,8 @@ def ransac_match(
                     break
             
             try_times += 1
+        if len(Ts) == 0:
+            return None
     t2 = time.time()
     log_info(f"finding coarse candidate T costs {t2-t1:.2f}s with {ransac_conf.num_samples - fall_back} pairs")
     
