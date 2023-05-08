@@ -114,7 +114,7 @@ if __name__ == "__main__":
         )
         print(utils.get_colorstr(
                 fore=utils.FORE_PRP, back=utils.BACK_ORG,
-                msg=f"{np.dot(raxis_gdth, raxis_pred):5.3f}\t{abs(rdegr_gdth - rdegr_pred):5.3f}\t{[float(f'{x:.2f}') for x in trans_gdth - trans_pred]}"
+                msg=f"{np.arccos(np.dot(raxis_gdth, raxis_pred)):5.3f}\t{abs(rdegr_gdth - rdegr_pred):5.3f}\t{[float(f'{x:.2f}') for x in trans_gdth - trans_pred]}"
             )
         )
         

@@ -141,12 +141,14 @@ class RansacRegister:
         if add_salt:
             fullset = set(list(range(len(downsampled_coords))))
             subbset = set(list(keyptsdict["id"].values))
-            keyptsidx = np.random.choice(list(fullset - subbset), size=int(len(downsampled_coords) * 0.1), replace=False)
+            rndptsidx = np.random.choice(list(fullset - subbset), size=int(len(downsampled_coords) * 0.2), replace=False)
+            keyptsidx = np.concatenate([keyptsdict["id"].values, rndptsidx])
         else:
+            rndptsidx = None
             keyptsidx = keyptsdict["id"].values
         
         return (
-            keyptsidx,
+            keyptsidx, rndptsidx,
             keyptsdict["eigval1"].values,
             keyptsdict["eigval2"].values,
             keyptsdict["eigval3"].values
@@ -231,16 +233,32 @@ class RansacRegister:
         
         params
         -
-        * pcd1: np.ndarray.
-            points in shape(n, feature_dimensions).
-        * pcd2: np.ndarray.
-            points in shape(n, feature_dimensions).
+        * pcd1(np.ndarray): Points in shape(n, feature_dimensions).
+        * pcd2(np.ndarray): Points in shape(n, feature_dimensions).
         
         return
         -
-        * T: np.ndarray
-            Predicted transformation T in shape(4,4).
+        * registration(open3d.registration.RegistrationResult): Pre
+            dicted registration result containing the T and corr.
+        * downsampled_coords1(np.ndarray): Coordinates1 after voxel
+            downsampled.
+        * downsampled_coords2(np.ndarray): Coordinates2 after voxel
+            downsampled.
+        * keyptsidx1(np.ndarray): Index of key points in downsample
+            coords1.
+        * keyptsidx2(np.ndarray): Index of key points in downsample
+            coords2.
+        * totl_matches(np.ndarray): Totl matching pair  with  shape
+            (n, 2).
+        * vald_matches(np.ndarray): Valid matching pair with  shape
+            (n, 2).
+        * misc(EasyDict.easydict): Other things you want to  return
+            but not that important compared to others.
         '''
+        # misc return values
+        miscret = dict()
+        
+        
         import copy
         # we don't need features other than coordinates
         if pcd1.shape[1] > 3:
@@ -253,8 +271,10 @@ class RansacRegister:
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = self.downsample(coords2)
         
         # step2: detect iss key points
-        keyptsidx1, _, _, _ = self.keypoints_detect(downsampled_coords1, self.misc.salt_keypts)
-        keyptsidx2, _, _, _ = self.keypoints_detect(downsampled_coords2, self.misc.salt_keypts)
+        keyptsidx1, rndptsidx1, _, _, _ = self.keypoints_detect(downsampled_coords1, self.misc.salt_keypts)
+        keyptsidx2, rndptsidx2, _, _, _ = self.keypoints_detect(downsampled_coords2, self.misc.salt_keypts)
+        miscret["rndptsidx1"] = rndptsidx1
+        miscret["rndptsidx2"] = rndptsidx2
         
         # step3: compute feature descriptors for all points
         feats1 = self.extract_features(downsampled_coords1, voxelized_coords1)
@@ -272,7 +292,11 @@ class RansacRegister:
                 None,
                 pcd1[idx_dse2vox1], pcd2[idx_dse2vox2],
                 keyptsidx1, keyptsidx2,
-                totl_matches, gdth_matches
+                totl_matches, gdth_matches,
+                edict({
+                    "rndptsidx1": rndptsidx1,
+                    "rndptsidx2": rndptsidx2
+                })
             )
         # utils.log_dbug(f"coarse corresponding pairs: {len(coarse_registration.correspondence_set)}")
         
@@ -285,9 +309,10 @@ class RansacRegister:
         
         return (
             fine_registrartion,
-            pcd1[idx_dse2vox1], pcd2[idx_dse2vox2],
+            pcd1[idx_dse2vox1], pcd2[idx_dse2vox2], # retain other features, don't use downsampled_coords
             keyptsidx1, keyptsidx2,
-            totl_matches, gdth_matches
+            totl_matches, gdth_matches,
+            edict(miscret)
         )
 
     # other utilities
