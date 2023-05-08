@@ -96,7 +96,7 @@ if __name__ == "__main__":
         (
             fine_registrartion,
             downsampled_coords1, downsampled_coords2,
-            keyptsdict1, keyptsdict2,
+            keyptsidx1, keyptsidx2,
             totl_matches, gdth_matches
         ) = register.register(points1, points2, T_gdth)
         if fine_registrartion is None:
@@ -121,8 +121,8 @@ if __name__ == "__main__":
         utils.dump_registration_result(
             args.out_root, "output",
             points1, points2,
-            downsampled_coords1, keyptsdict1["id"].values,
-            downsampled_coords2, keyptsdict2["id"].values,
+            downsampled_coords1, keyptsidx1,
+            downsampled_coords2, keyptsidx2,
             T_gdth, T_pred,
             gdth_matches
         )

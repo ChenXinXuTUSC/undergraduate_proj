@@ -12,6 +12,7 @@ parser.add_argument("--key_radius_factor", type=float, default=1.0, help="scale 
 parser.add_argument("--positive_thresh", type=float, default=0.5, help="whether to select a pair as postive according to its score")
 parser.add_argument("--lambda1", type=float, default=2.75, help="ISS eigen value compare ratio 1")
 parser.add_argument("--lambda2", type=float, default=2.65, help="ISS eigen value compare ratio 2")
+parser.add_argument("--salt_keypts", action="store_true", help="whether to add salt-pepper keypoints")
 # extractor configuration
 parser.add_argument("--fpfh_radius_factor", type=float, default=1.0, help="scale factor on voxel size for feature extration")
 parser.add_argument("--fpfh_nn", type=int, default=30, help="neighbour num used in each feature generation of fpfh")
