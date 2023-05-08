@@ -47,7 +47,7 @@ if __name__ == "__main__":
     classifier.load_state_dict(torch.load("log/Mapper/2023-04-12_21:09:09/weights/100.pth"))
     classifier.to(device)
     classifier.eval()
-    predictor = models.inlier_proposal.predictor.Predictor(3, 1, [32, 64, 32])
+    predictor = models.inlier_proposal.predicter.Predictor(3, 1, [32, 64, 32])
     predictor.load_state_dict(torch.load("log/Predictor/2023-04-13_17:17:49/weights/100.pth"))
     predictor.to(device)
     predictor.eval()

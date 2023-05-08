@@ -6,7 +6,7 @@ from . import block
 
 import utils
 
-class Predictor(nn.Module):
+class Predicter(nn.Module):
     '''
     ResUNet structure from FCGF, and model idea
     from DGR. DGR use  the  sigmoid  activation

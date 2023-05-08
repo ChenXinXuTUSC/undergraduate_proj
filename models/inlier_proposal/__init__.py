@@ -1,2 +1,2 @@
 from . import mapper
-from . import predictor
+from . import predicter

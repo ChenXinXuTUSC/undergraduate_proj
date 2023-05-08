@@ -114,7 +114,7 @@ class RansacRegister:
             self.mapper.to(self.device)
             self.mapper.eval()
         if os.path.exists(predicter_conf):
-            self.predicter = inlier_proposal.predictor.Predictor.conf_init(predicter_conf)
+            self.predicter = inlier_proposal.predicter.Predicter.conf_init(predicter_conf)
             self.predicter.to(self.device)
             self.predicter.eval()
         if self.mapper is not None and self.predicter is not None:
