@@ -2,3 +2,4 @@ in_channels: 66
 out_channels: 16
 mid_channels: [128, 256, 128, 64]
 weight: "/home/hm/fuguiduo/code/ransac_registration/log/Mapper/i66o16/2023-05-09_20:44:52/weights/best.pth"
+# weight: "/home/hm/fuguiduo/code/ransac_registration/log/Mapper/i66o16/2023-04-21_11:41:15/weights/best.pth"
