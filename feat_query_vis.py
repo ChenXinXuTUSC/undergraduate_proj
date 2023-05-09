@@ -8,17 +8,6 @@ import utils
 
 import models
 
-
-# step1: read point cloud pair
-# step2: voxel down sample
-# step3: extract ISS feature
-# step4: feature description
-# step5: RANSAC registration
-#   step5.1: establish feature correspondences
-#   step5.2: select n(> 3) pairs to solve the transformation R and t
-#   step5.3: repeat step5.2 until error converge
-# step6: ICP optimized transformation [R,t]
-
 if __name__ == "__main__":
     args = config.args
 
@@ -91,39 +80,33 @@ if __name__ == "__main__":
             points2_o3d = utils.npy2o3d(points2)
             points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
             points2 = utils.o3d2npy(points2_o3d)
-        (
-            fine_registrartion,
-            downsampled_coords1, downsampled_coords2,
-            keyptsidx1, keyptsidx2,
-            totl_matches, gdth_matches,
-            msicret
-        ) = register.register(points1, points2, T_gdth)
-        if fine_registrartion is None:
-            utils.log_warn(f"fail to register {sample_name}")
-            continue
         
-        T_pred = fine_registrartion.transformation
-        raxis_pred, rdegr_pred = utils.resolve_axis_angle(T_pred, deg=True)
-        raxis_gdth, rdegr_gdth = utils.resolve_axis_angle(T_gdth, deg=True)
-        trans_pred, trans_gdth = T_pred[:3,3], T_gdth[:3,3]
-        print(utils.get_colorstr(
-                fore=utils.FORE_CYN, back=utils.BACK_ORG,
-                msg="raxis\trdegr\ttrans"
-            )
-        )
-        print(utils.get_colorstr(
-                fore=utils.FORE_PRP, back=utils.BACK_ORG,
-                msg=f"{np.arccos(np.dot(raxis_gdth, raxis_pred)):5.3f}\t{abs(rdegr_gdth - rdegr_pred):5.3f}\t{[float(f'{x:.2f}') for x in trans_gdth - trans_pred]}"
-            )
-        )
-        
-        utils.dump_registration_result(
-            args.out_root, "output",
-            points1, points2,
-            downsampled_coords1, keyptsidx1,
-            downsampled_coords2, keyptsidx2,
-            T_gdth, T_pred,
-            gdth_matches
-        )
+        # voxel domnsample
+        downsampled_coords, voxelized_coords, idx_dse2vox = register.downsample(points1)
+        downsampled_coords[:, 3:6] = np.array([100, 100, 100])
+        # detect keypoints
+        keyptsidx, *misc = register.detect_keypoints(downsampled_coords, add_salt=False)
 
-        utils.log_info(f"sample: {sample_name}")
+        # compute features
+        feats = register.extract_features(downsampled_coords, voxelized_coords)
+        
+        selected_idx = np.random.choice(keyptsidx, size=3, replace=False)
+        # color query point
+        colors = [
+            np.array([255, 255, 0]),
+            np.array([255, 0, 255]),
+            np.array([0, 255, 255])
+        ]
+        
+        # FLANN search
+        search_tree = o3d.geometry.KDTreeFlann(feats.T)
+        neighbours = []
+        for i, idx in enumerate(selected_idx):
+            _, dst_idx, _ = search_tree.search_knn_vector_xd(feats[idx], 500)
+            neighbours.append(downsampled_coords[dst_idx])
+            neighbours[-1][:, 3:6] = colors[i]
+        neighbours = np.concatenate(neighbours, axis=0)
+        utils.log_dbug("here")
+        
+        utils.dump1frag(downsampled_coords, utils.make_ply_vtx_type(True, True), out_dir=args.out_root, out_name="original.ply")
+        utils.dump1frag(neighbours, utils.make_ply_vtx_type(True, True), out_dir=args.out_root, out_name="neighbours.ply")

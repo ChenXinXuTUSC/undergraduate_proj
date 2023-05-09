@@ -130,7 +130,7 @@ class RansacRegister:
         return downsampled_coords, voxelized_coords, idx_dse2vox
     
     # step2: detect keypoints
-    def keypoints_detect(self, downsampled_coords: np.ndarray, add_salt:bool=False):
+    def detect_keypoints(self, downsampled_coords: np.ndarray, add_salt:bool=False):
         keyptsdict = utils.iss_detect(
             downsampled_coords,
             self.detecter_conf.key_radius,
@@ -271,8 +271,8 @@ class RansacRegister:
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = self.downsample(coords2)
         
         # step2: detect iss key points
-        keyptsidx1, rndptsidx1, _, _, _ = self.keypoints_detect(downsampled_coords1, self.misc.salt_keypts)
-        keyptsidx2, rndptsidx2, _, _, _ = self.keypoints_detect(downsampled_coords2, self.misc.salt_keypts)
+        keyptsidx1, rndptsidx1, _, _, _ = self.detect_keypoints(downsampled_coords1, self.misc.salt_keypts)
+        keyptsidx2, rndptsidx2, _, _, _ = self.detect_keypoints(downsampled_coords2, self.misc.salt_keypts)
         miscret["rndptsidx1"] = rndptsidx1
         miscret["rndptsidx2"] = rndptsidx2
         

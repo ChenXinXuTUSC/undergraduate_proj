@@ -113,23 +113,38 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
-        // iss test
+        // entry common modelnet40
         {
-            "name": "iss test",
+            "name": "entry modelnet40",
             "type": "python",
             "request": "launch",
-            "program": "o3d_iss_test.py",
+            "program": "entry_common.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--data_type", "ThreeDMatchFCGF",
-                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
-                "--voxel_size", "0.020",
-                "--overlap_dn", "0.3",
-                "--overlap_up", "0.5",
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--out_root", "${workspaceFolder}/results/inlier_proposal",
+                "--voxel_size", "0.01",
+                "--classes", "chair",
+                "--partition", "0.00",
+                // detecter
+                "--key_radius_factor", "2.25",
+                "--lambda1", "2.75",
+                "--lambda2", "2.50",
+                // extracter
+                "--extracter_type", "FPFHFeatExtracter",
+                "--fpfh_radius_factor", "1.75",
+                "--fpfh_nn", "50",
+                // classifier
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_modelnet40.yaml",
+                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_modelnet40.yaml",
+                "--positive_thresh", "0.70",
+                // misc
+                "--recompute_norm",
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
@@ -160,45 +175,10 @@
                 // classifier
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3dmatch.yaml",
                 "--predicter_conf", "${workspaceFolder}/models/conf/predicter_3dmatch.yaml",
-                "--positive_thresh", "0.55",
+                "--positive_thresh", "0.65",
                 // misc
                 "--recompute_norm",
                 "--salt_keypts",
-            ],
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "1",
-                "CUDA_LAUNCH_BLOCKING": "1",
-            }
-        },
-        // entry common modelnet40
-        {
-            "name": "entry modelnet40",
-            "type": "python",
-            "request": "launch",
-            "program": "entry_common.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "--data_type", "ModelNet40Dense",
-                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
-                "--out_root", "${workspaceFolder}/results/inlier_proposal",
-                "--voxel_size", "0.01",
-                "--classes", "chair",
-                "--partition", "0.00",
-                // detecter
-                "--key_radius_factor", "2.25",
-                "--lambda1", "2.75",
-                "--lambda2", "2.50",
-                // extracter
-                "--extracter_type", "FPFHFeatExtracter",
-                "--fpfh_radius_factor", "1.75",
-                "--fpfh_nn", "50",
-                // classifier
-                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_modelnet40.yaml",
-                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_modelnet40.yaml",
-                "--positive_thresh", "0.70",
-                // misc
-                "--recompute_norm",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -294,6 +274,43 @@
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
+        },
+        // feature query visualization
+        {
+            "name": "feat query vis",
+            "type": "python",
+            "request": "launch",
+            "program": "feat_query_vis.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--out_root", "${workspaceFolder}/results/feat_query_vis",
+                "--rooms", "sun3d-mit_lab_hj-lab_hj_tea_nov_2_2012_scan1_erika",
+                "--voxel_size", "0.01",
+                "--classes", "airplane",
+                "--partition", "0.00",
+                // detecter
+                "--key_radius_factor", "2.25",
+                "--lambda1", "2.75",
+                "--lambda2", "2.50",
+                // extracter
+                "--extracter_type", "FPFHFeatExtracter",
+                "--fpfh_radius_factor", "1.75",
+                "--fpfh_nn", "50",
+                // classifier
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_modelnet40.yaml",
+                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_modelnet40.yaml",
+                "--positive_thresh", "0.70",
+                // misc
+                // "--recompute_norm",
+                // "--salt_keypts",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
