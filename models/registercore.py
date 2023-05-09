@@ -130,7 +130,7 @@ class RansacRegister:
         return downsampled_coords, voxelized_coords, idx_dse2vox
     
     # step2: detect keypoints
-    def detect_keypoints(self, downsampled_coords: np.ndarray, add_salt:bool=False):
+    def detect_keypoints(self, downsampled_coords: np.ndarray, add_salt:float=0.0):
         keyptsdict = utils.iss_detect(
             downsampled_coords,
             self.detecter_conf.key_radius,
@@ -138,10 +138,10 @@ class RansacRegister:
             self.detecter_conf.lambda2
         )
         
-        if add_salt:
+        if add_salt > 1e-5:
             fullset = set(list(range(len(downsampled_coords))))
             subbset = set(list(keyptsdict["id"].values))
-            rndptsidx = np.random.choice(list(fullset - subbset), size=int(len(downsampled_coords) * 0.2), replace=False)
+            rndptsidx = np.random.choice(list(fullset - subbset), size=int(len(downsampled_coords) * add_salt), replace=False)
             keyptsidx = np.concatenate([keyptsdict["id"].values, rndptsidx])
         else:
             rndptsidx = None

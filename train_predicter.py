@@ -50,10 +50,10 @@ def save_state_dict(state, out_dir:str, out_name: str):
 if __name__ == "__main__":
     train_loader = torch.utils.data.DataLoader(
         datasets.train_data.MatchingFeats(
-            "./data/matches_3dmatch",
+            "./data/matches_modelnet40",
             64,
             postive_ratio=0.1,
-            filter_strs=["sun3d", "analysis-by-synthesis"]
+            filter_strs=["toilet", "night_stand", "radio", "sofa", "dresser"]
         ),
         num_workers=2,
         batch_size=8,
@@ -62,10 +62,10 @@ if __name__ == "__main__":
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/conf/mapper_3dmatch.yaml")
+    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/conf/mapper_modelnet40.yaml")
     classifier.to(device)
     classifier.eval()
-    predictor = models.inlier_proposal.predicter.Predicter.conf_init("models/conf/predicter_3dmatch.yaml")
+    predictor = models.inlier_proposal.predicter.Predicter.conf_init("models/conf/predicter_modelnet40.yaml")
     predictor.to(device)
     predictor.train()
     

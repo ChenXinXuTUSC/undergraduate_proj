@@ -126,12 +126,12 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "chair",
+                "--classes", "airplane",
                 "--partition", "0.00",
                 // detecter
                 "--key_radius_factor", "2.25",
                 "--lambda1", "2.75",
-                "--lambda2", "2.50",
+                "--lambda2", "2.75",
                 // extracter
                 "--extracter_type", "FPFHFeatExtracter",
                 "--fpfh_radius_factor", "1.75",
@@ -142,6 +142,7 @@
                 "--positive_thresh", "0.70",
                 // misc
                 "--recompute_norm",
+                "--salt_keypts", "0.00",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -160,7 +161,7 @@
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
-                "--rooms", "7-scenes-pumpkin 7-scenes-chess",
+                "--rooms", "",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.4",
                 "--overlap_up", "0.5",
@@ -175,10 +176,10 @@
                 // classifier
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3dmatch.yaml",
                 "--predicter_conf", "${workspaceFolder}/models/conf/predicter_3dmatch.yaml",
-                "--positive_thresh", "0.65",
+                "--positive_thresh", "0.70",
                 // misc
                 "--recompute_norm",
-                "--salt_keypts",
+                "--salt_keypts", "0.15",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -289,7 +290,6 @@
                 "--data_type", "ModelNet40Dense",
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/feat_query_vis",
-                "--rooms", "sun3d-mit_lab_hj-lab_hj_tea_nov_2_2012_scan1_erika",
                 "--voxel_size", "0.01",
                 "--classes", "airplane",
                 "--partition", "0.00",

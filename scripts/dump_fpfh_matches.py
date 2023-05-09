@@ -39,13 +39,21 @@ if __name__ == "__main__":
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = utils.voxel_down_sample_gpt(points2, args.voxel_size)
 
         # step2: detect key points using random selection
-        keyptsdict1 = utils.iss_detect(downsampled_coords1, args.voxel_size * 2.0)
-        keyptsdict2 = utils.iss_detect(downsampled_coords2, args.voxel_size * 2.0)
-        if len(keyptsdict1["id"].values) == 0 or len(keyptsdict2["id"].values) == 0:
-            utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
-            continue
+        keyptsdict1 = utils.iss_detect(
+            downsampled_coords1,
+            args.voxel_size * args.key_radius_factor,
+            args.lambda1, args.lambda2
+        )
+        keyptsdict2 = utils.iss_detect(
+            downsampled_coords2,
+            args.voxel_size * args.key_radius_factor,
+            args.lambda1, args.lambda2
+        )
         keyptsindices1 = keyptsdict1["id"].values
         keyptsindices2 = keyptsdict2["id"].values
+        if len(keyptsindices1) == 0 or len(keyptsindices2) == 0:
+            utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
+            continue
         keypts1 = downsampled_coords1[keyptsindices1]
         keypts2 = downsampled_coords2[keyptsindices2]
 

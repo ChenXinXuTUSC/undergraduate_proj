@@ -37,20 +37,16 @@ def iss_detect(
     lambda2=2.65
     ):
     '''Detect point cloud key points using Intrinsic Shape Signature(ISS)
-
-
     params
-    ----------
-    * points: numpy.ndarray
+    -
+    * points(numpy.ndarray): 
         points array of shape(n, 3)
-    * radius: float.
-        radius for ISS computing.
+    * radius(float): radius for ISS computing.
 
     return
-    ----------
-    * pd.DataFrame: dict
-        dict structure that stores key points' id, pos and eigen
-        values of three main axises.
+    -
+    * keyptsdict(pd.DataFrame): Dict structure that stores key points' id
+        pos and eigen values of three main axises.
     '''
     # please figure out the difference between k nearest neighbour
     # search and radius search. In this ISS key  points  detection
