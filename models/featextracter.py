@@ -19,12 +19,9 @@ class FPFHFeatExtracter:
     
     def __call__(self, downsampled_coords: np.ndarray, voxelized_coords: np.ndarray):
         coords_o3d = utils.npy2o3d(downsampled_coords)
-        coords_o3d.estimate_normals(
-            search_param=o3d.geometry.KDTreeSearchParamHybrid(
-                radius=self.radius,
-                max_nn=self.max_nn
-            )
-        )
+        
+        # please provide the normal before entering this function
+        # do not recompute normal on downsampled points!
         # compute all points' fpfh
         fpfhs = o3d.pipelines.registration.compute_fpfh_feature(
             coords_o3d,

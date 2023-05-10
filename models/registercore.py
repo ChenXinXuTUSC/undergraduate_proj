@@ -278,8 +278,8 @@ class RansacRegister:
         miscret["rndptsidx2"] = rndptsidx2
         
         # step3: compute feature descriptors for all points
-        feats1 = self.extract_features(downsampled_coords1, voxelized_coords1)
-        feats2 = self.extract_features(downsampled_coords2, voxelized_coords2)
+        feats1 = self.extract_features(pcd1[idx_dse2vox1], voxelized_coords1)
+        feats2 = self.extract_features(pcd2[idx_dse2vox2], voxelized_coords2)
         
         # step4: coarse registration
         coarse_registration, totl_matches, gdth_matches = self.coarse_registration(

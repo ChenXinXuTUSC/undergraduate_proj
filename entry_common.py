@@ -61,7 +61,7 @@ if __name__ == "__main__":
     })
     checkr_conf = edict({
         "max_corrdist": args.voxel_size * 1.50,
-        "mutldist_factor": 0.90,
+        "mutldist_factor": 0.85,
         "normdegr_thresh": None
     })
     

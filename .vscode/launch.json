@@ -141,7 +141,7 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "airplane",
+                "--classes", "person",
                 "--partition", "0.00",
                 // detecter
                 "--key_radius_factor", "2.00",
@@ -154,10 +154,10 @@
                 // classifier
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_ModelNet40.yaml",
                 "--predicter_conf", "${workspaceFolder}/models/conf/predicter_ModelNet40.yaml",
-                "--positive_thresh", "0.50",
+                "--positive_thresh", "0.65",
                 // misc
                 "--recompute_norm",
-                "--salt_keypts", "0.00",
+                "--salt_keypts", "0.05",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -176,14 +176,14 @@
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
-                "--rooms", "",
+                "--rooms", "7-scenes-pumpkin 7-scenes-office",
                 "--voxel_size", "0.05",
                 "--overlap_dn", "0.4",
                 "--overlap_up", "0.5",
                 // detecter
                 "--key_radius_factor", "2.25",
                 "--lambda1", "3.00",
-                "--lambda2", "3.00",
+                "--lambda2", "2.85",
                 // extracter
                 "--extracter_type", "FCGFFeatExtracter",
                 "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
@@ -191,10 +191,10 @@
                 // classifier
                 "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3DMatch.yaml",
                 "--predicter_conf", "${workspaceFolder}/models/conf/predicter_3DMatch.yaml",
-                "--positive_thresh", "0.70",
+                "--positive_thresh", "0.65",
                 // misc
                 "--recompute_norm",
-                "--salt_keypts", "0.15",
+                "--salt_keypts", "0.025",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",

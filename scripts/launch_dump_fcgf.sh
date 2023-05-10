@@ -8,6 +8,7 @@ python ${SCRIPT_PATH}/dump_fcgf_matches.py \
     --data_type ThreeDMatchFCGF \
     --data_root /home/hm/fuguiduo/datasets/3DMatch-FCGF \
     --out_root ${workspaceFolder}/data/matches_3DMatch \
+    --rooms "analysis-by-synthesis-apt1 bundlefusion-office sun3d-harvard sun3d-mit" \
     --overlap_dn 0.3 \
     --overlap_up 0.5 \
     --fcgf_model ResUNetBN2C \
@@ -16,3 +17,5 @@ python ${SCRIPT_PATH}/dump_fcgf_matches.py \
     --key_radius_factor 2.15 \
     --lambda1 2.75 \
     --lambda2 2.75 \
+    --recompute_norm \
+    --salt_keypts 0.05

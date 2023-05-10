@@ -15,6 +15,14 @@ import utils
 from utils import ransac
 import models
 
+def add_salt(total: int, selected: np.ndarray, noise_ratio: float):
+    if noise_ratio < 1e-5:
+        return selected
+    fullset = set(list(range(total)))
+    subbset = set(list(selected))
+    rndptsidx = np.random.choice(list(fullset - subbset), size=int(total * noise_ratio), replace=False)
+    return np.concatenate([selected, rndptsidx])
+
 
 if __name__ == "__main__":
     args = config.args
@@ -56,13 +64,13 @@ if __name__ == "__main__":
         # step2: detect key points using ISS
         keyptsdict1 = utils.iss_detect(downsampled_coords1, args.voxel_size * args.key_radius_factor, args.lambda1, args.lambda2)
         keyptsdict2 = utils.iss_detect(downsampled_coords2, args.voxel_size * args.key_radius_factor, args.lambda1, args.lambda2)
-        keyptsindices1 = keyptsdict1["id"].values
-        keyptsindices2 = keyptsdict2["id"].values
-        if len(keyptsindices1) == 0 or len(keyptsindices2) == 0:
+        keyptsidx1 = keyptsdict1["id"].values
+        keyptsidx2 = keyptsdict2["id"].values
+        if len(keyptsidx1) == 0 or len(keyptsidx2) == 0:
             utils.log_warn(f"{sample_name} failed to find ISS keypoints, continue to next sample")
             continue
-        keypts1 = downsampled_coords1[keyptsindices1]
-        keypts2 = downsampled_coords2[keyptsindices2]
+        keyptsidx1 = add_salt(len(downsampled_coords1), keyptsidx1, args.salt_keypts)
+        keyptsidx2 = add_salt(len(downsampled_coords2), keyptsidx2, args.salt_keypts)
 
         # step3: compute FCGF for each key point
         # compute all points' fcgf
@@ -79,12 +87,14 @@ if __name__ == "__main__":
             )
         ).F.detach().cpu().numpy()
         # only select key points' fcgf
-        keyfcgfs1 = fcgfs1[keyptsindices1]
-        keyfcgfs2 = fcgfs2[keyptsindices2]
+        keyfcgfs1 = fcgfs1[keyptsidx1]
+        keyfcgfs2 = fcgfs2[keyptsidx2]
 
         # step4: coarse ransac registration
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfcgfs1.T, keyfcgfs2.T)
+        keypts1 = downsampled_coords1[keyptsidx1]
+        keypts2 = downsampled_coords2[keyptsidx2]
         correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.voxel_size * 1.50, T_gdth)
         num_valid_matches = correct.astype(np.int32).sum()
         num_total_matches = correct.shape[0]

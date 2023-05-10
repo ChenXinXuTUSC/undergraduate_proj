@@ -8,7 +8,7 @@ python ${SCRIPT_PATH}/dump_fpfh_matches.py \
     --data_type ModelNet40Dense \
     --data_root /home/hm/fuguiduo/datasets/modelnet40/ply \
     --out_root ${workspaceFolder}/data/matches_ModelNet40 \
-    --classes "airplane guitar" \
+    --classes "radio monitor lamp vase bed" \
     --voxel_size 0.01 \
     --partition 0.00\
     --key_radius_factor 2.00 \
@@ -17,4 +17,5 @@ python ${SCRIPT_PATH}/dump_fpfh_matches.py \
     --extracter_type FPFHFeatExtracter \
     --fpfh_radius_factor 1.75 \
     --fpfh_nn 100 \
-    --recompute_norm
+    --salt_keypts 0.10 \
+    --recompute_norm \

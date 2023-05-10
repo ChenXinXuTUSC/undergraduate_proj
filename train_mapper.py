@@ -53,7 +53,7 @@ if __name__ == "__main__":
             f"./data/matches_{dataset_name}",
             64,
             postive_ratio=0.1,
-            filter_strs=["toilet", "night_stand", "radio", "sofa", "dresser"]
+            filter_strs=["radio", "monitor", "lamp", "vase", "bed"]
         ),
         num_workers=2,
         batch_size=8,
