@@ -102,11 +102,10 @@ if __name__ == "__main__":
         search_tree = o3d.geometry.KDTreeFlann(feats.T)
         neighbours = []
         for i, idx in enumerate(selected_idx):
-            _, dst_idx, _ = search_tree.search_knn_vector_xd(feats[idx], 500)
+            _, dst_idx, _ = search_tree.search_knn_vector_xd(feats[idx], 250)
             neighbours.append(downsampled_coords[dst_idx])
             neighbours[-1][:, 3:6] = colors[i]
         neighbours = np.concatenate(neighbours, axis=0)
-        utils.log_dbug("here")
         
         utils.dump1frag(downsampled_coords, utils.make_ply_vtx_type(True, True), out_dir=args.out_root, out_name="original.ply")
         utils.dump1frag(neighbours, utils.make_ply_vtx_type(True, True), out_dir=args.out_root, out_name="neighbours.ply")

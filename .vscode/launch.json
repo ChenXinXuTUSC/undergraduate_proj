@@ -126,23 +126,23 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "airplane",
+                "--classes", "guitar",
                 "--partition", "0.00",
                 // detecter
-                "--key_radius_factor", "2.25",
-                "--lambda1", "2.75",
-                "--lambda2", "2.75",
+                "--key_radius_factor", "2.00",
+                "--lambda1", "1.75",
+                "--lambda2", "1.75",
                 // extracter
                 "--extracter_type", "FPFHFeatExtracter",
                 "--fpfh_radius_factor", "1.75",
                 "--fpfh_nn", "50",
                 // classifier
-                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_modelnet40.yaml",
-                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_modelnet40.yaml",
-                "--positive_thresh", "0.70",
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_ModelNet40.yaml",
+                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_ModelNet40.yaml",
+                "--positive_thresh", "0.50",
                 // misc
                 "--recompute_norm",
-                "--salt_keypts", "0.00",
+                "--salt_keypts", "0.05",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -174,8 +174,8 @@
                 "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
                 "--fcgf_model", "ResUNetBN2C",
                 // classifier
-                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3dmatch.yaml",
-                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_3dmatch.yaml",
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3DMatch.yaml",
+                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_3DMatch.yaml",
                 "--positive_thresh", "0.70",
                 // misc
                 "--recompute_norm",
@@ -278,9 +278,9 @@
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
-        // feature query visualization
+        // fpfh feature query visualization
         {
-            "name": "feat query vis",
+            "name": "fpfh feat query vis",
             "type": "python",
             "request": "launch",
             "program": "feat_query_vis.py",
@@ -294,9 +294,9 @@
                 "--classes", "airplane",
                 "--partition", "0.00",
                 // detecter
-                "--key_radius_factor", "2.25",
-                "--lambda1", "2.75",
-                "--lambda2", "2.50",
+                "--key_radius_factor", "2.00",
+                "--lambda1", "1.75",
+                "--lambda2", "1.75",
                 // extracter
                 "--extracter_type", "FPFHFeatExtracter",
                 "--fpfh_radius_factor", "1.75",
@@ -306,8 +306,45 @@
                 "--predicter_conf", "${workspaceFolder}/models/conf/predicter_modelnet40.yaml",
                 "--positive_thresh", "0.70",
                 // misc
-                // "--recompute_norm",
+                "--recompute_norm",
                 // "--salt_keypts",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
+        },
+        // fcgf feature query visualization
+        {
+            "name": "fcgf feat query vis",
+            "type": "python",
+            "request": "launch",
+            "program": "feat_query_vis.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ThreeDMatchFCGF",
+                "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
+                "--out_root", "${workspaceFolder}/results/feat_query_vis",
+                "--rooms", "sun3d-hotel_umd-maryland_hotel3",
+                "--voxel_size", "0.025",
+                "--overlap_dn", "0.4",
+                "--overlap_up", "0.5",
+                // detecter
+                "--key_radius_factor", "2.25",
+                "--lambda1", "3.00",
+                "--lambda2", "3.00",
+                // extracter
+                "--extracter_type", "FCGFFeatExtracter",
+                "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
+                "--fcgf_model", "ResUNetBN2C",
+                // classifier
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_3DMatch.yaml",
+                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_3DMatch.yaml",
+                "--positive_thresh", "0.70",
+                // misc
+                "--recompute_norm",
+                "--salt_keypts", "0.00",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",

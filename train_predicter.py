@@ -48,9 +48,10 @@ def save_state_dict(state, out_dir:str, out_name: str):
         torch.save(state, f"{out_dir}/{out_name}.pth")
 
 if __name__ == "__main__":
+    dataset_name = "ModelNet40"
     train_loader = torch.utils.data.DataLoader(
         datasets.train_data.MatchingFeats(
-            "./data/matches_modelnet40",
+            f"./data/matches_{dataset_name}",
             64,
             postive_ratio=0.1,
             filter_strs=["toilet", "night_stand", "radio", "sofa", "dresser"]
@@ -62,10 +63,10 @@ if __name__ == "__main__":
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    classifier = models.inlier_proposal.mapper.Mapper.conf_init("models/conf/mapper_modelnet40.yaml")
+    classifier = models.inlier_proposal.mapper.Mapper.conf_init(f"models/conf/mapper_{dataset_name}.yaml")
     classifier.to(device)
     classifier.eval()
-    predictor = models.inlier_proposal.predicter.Predicter.conf_init("models/conf/predicter_modelnet40.yaml")
+    predictor = models.inlier_proposal.predicter.Predicter.conf_init(f"models/conf/predicter_{dataset_name}.yaml")
     predictor.to(device)
     predictor.train()
     
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     
     
     timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-    log_dir = f"./log/Predicter/i{predictor.in_channels}o{predictor.out_channels}/{timestamp}"
+    log_dir = f"./log/{dataset_name}/Predicter/i{predictor.in_channels}o{predictor.out_channels}/{timestamp}"
     tfxw = SummaryWriter(log_dir=log_dir)
     num_epochs = 100
     log_freq = 10
