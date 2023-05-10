@@ -168,23 +168,25 @@ class RansacRegister:
         keyptsidx2,
         feats1: np.ndarray,
         feats2: np.ndarray,
-        T_gdth: np.ndarray=None
+        T_gdth: np.ndarray=None,
+        matches: np.ndarray=None
     ):
         keycoords1 = downsampled_coords1[keyptsidx1]
         keycoords2 = downsampled_coords2[keyptsidx2]
-        
-        from utils import ransac
         keyfeats1 = feats1[keyptsidx1]
         keyfeats2 = feats2[keyptsidx2]
-        # use feature descriptor of key points to compute matches
-        matches = ransac.init_matches(keyfeats1.T, keyfeats2.T)
+        
+        if matches is None:
+            # use feature descriptor of key points to compute matches
+            matches = utils.ransac.init_matches(keyfeats1.T, keyfeats2.T)
+        
         totl_matches = np.array([keyptsidx1[matches[:,0]], keyptsidx2[matches[:,1]]]).T
         gdth_matches = None
         if T_gdth is not None:
-            correct = utils.ground_truth_matches(matches, keycoords1, keycoords2, self.voxel_size * 1.50, T_gdth) # 上帝视角
+            correct = utils.ground_truth_matches(matches, keycoords1, keycoords2, self.voxel_size * 1.50, T_gdth)
             correct_valid_num = correct.astype(np.int32).sum()
             correct_total_num = correct.shape[0]
-            utils.log_info(f"gdth/init: {correct_valid_num:d}/{correct_total_num:d}={correct_valid_num/correct_total_num:.3f}")
+            utils.log_info(f"gdth/init: {correct_valid_num:4d}/{correct_total_num:4d}={correct_valid_num/correct_total_num:.3f}")
             gdth_matches = totl_matches[correct]
         
         if self.use_filter:
@@ -194,7 +196,7 @@ class RansacRegister:
             # snapshot(plane_coords, predicted_mask, d=2, out_name="pred")
             num_valid_matches = np.logical_and(correct, predicted_mask).sum()
             num_total_matches = matches.shape[0]
-            utils.log_dbug(f"gdth/pred: {num_valid_matches:d}/{num_total_matches:d}={num_valid_matches/num_total_matches:.3f}")
+            utils.log_dbug(f"gdth/pred: {num_valid_matches:4d}/{num_total_matches:4d}={num_valid_matches/num_total_matches:.3f}")
             if num_valid_matches / num_total_matches < 0.1 or num_valid_matches < 3:
                 return None, totl_matches, gdth_matches
         
@@ -205,7 +207,6 @@ class RansacRegister:
             checkr_conf=self.checkr_conf,
             matches=matches
         )
-        
         
         return coarse_registration, totl_matches, gdth_matches
     
@@ -271,8 +272,8 @@ class RansacRegister:
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = self.downsample(coords2)
         
         # step2: detect iss key points
-        keyptsidx1, rndptsidx1, _, _, _ = self.detect_keypoints(downsampled_coords1, self.misc.salt_keypts)
-        keyptsidx2, rndptsidx2, _, _, _ = self.detect_keypoints(downsampled_coords2, self.misc.salt_keypts)
+        keyptsidx1, rndptsidx1, *_ = self.detect_keypoints(downsampled_coords1, self.misc.salt_keypts)
+        keyptsidx2, rndptsidx2, *_ = self.detect_keypoints(downsampled_coords2, self.misc.salt_keypts)
         miscret["rndptsidx1"] = rndptsidx1
         miscret["rndptsidx2"] = rndptsidx2
         

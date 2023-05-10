@@ -65,18 +65,13 @@ if __name__ == "__main__":
         keypts2 = downsampled_coords2[keyptsindices2]
 
         # step3: compute FPFH for each key point
-        downsampled_coords1_o3d = utils.npy2o3d(downsampled_coords1)
-        downsampled_coords2_o3d = utils.npy2o3d(downsampled_coords2)
-        downsampled_coords1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=50))
-        downsampled_coords2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*2.0, max_nn=50))
-        # compute all points' fpfh
         fpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
-            downsampled_coords1_o3d,
-            o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*1.5, max_nn=100)
+            utils.npy2o3d(downsampled_coords1),
+            o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * args.fpfh_radius_factor, max_nn=args.fpfh_nn)
         ).data.T
         fpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
-            downsampled_coords2_o3d,
-            o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size*1.5, max_nn=100)
+            utils.npy2o3d(downsampled_coords2),
+            o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * args.fpfh_radius_factor, max_nn=args.fpfh_nn)
         ).data.T
         # only select key points' fpfh
         keyfeats1 = fpfhs1[keyptsindices1]
@@ -86,9 +81,9 @@ if __name__ == "__main__":
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfeats1.T, keyfeats2.T)
         correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.voxel_size * 1.5, T_gdth)
-        num_valid_matches = correct.astype(np.int32).sum()
-        num_total_matches = correct.shape[0]
-        tqdm.write(utils.log_info(f"gdth/init: {num_valid_matches:.2f}/{num_total_matches:.2f}={num_valid_matches/num_total_matches:.2f}", quiet=True))
+        num_valid_matches = int(correct.astype(np.int32).sum())
+        num_total_matches = int(correct.shape[0])
+        tqdm.write(utils.log_info(f"gdth/init: {num_valid_matches:4d}/{num_total_matches:4d}={num_valid_matches/num_total_matches:.2f}", quiet=True))
         
         matches_mat = np.concatenate([keyfeats1[matches[:, 0]], keyfeats2[matches[:, 1]]], axis=1)
         

@@ -16,5 +16,5 @@ python ${SCRIPT_PATH}/dump_fpfh_matches.py \
     --lambda2 2.00 \
     --extracter_type FPFHFeatExtracter \
     --fpfh_radius_factor 1.75 \
-    --fpfh_nn 50 \
+    --fpfh_nn 100 \
     --recompute_norm

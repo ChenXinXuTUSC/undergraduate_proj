@@ -528,7 +528,6 @@ def ground_truth_matches(matches: np.ndarray, pcd1, pcd2, radius: float, T: np.n
         pcd1 = apply_transformation(pcd1, T)
     
     is_correct = ((pcd1[matches[:, 0]] - pcd2[matches[:, 1]]) ** 2).sum(axis=1) < radius ** 2
-    # log_dbug("in filter:\n", ((pcd1[matches[is_correct][:, 0]] - pcd2[matches[is_correct][:, 1]]) ** 2).sum(axis=1))
     return is_correct
 
 def principle_K_components(samples: np.ndarray, k: int):
