@@ -34,6 +34,13 @@ if __name__ == "__main__":
         os.makedirs(args.out_root, mode=0o755)
 
     for i, (points1, points2, T_gdth, sample_name) in tqdm(enumerate(dataloader), total=len(dataloader), ncols=100, desc="gen npz"):
+        if args.recompute_norm:
+            points1_o3d = utils.npy2o3d(points1)
+            points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
+            points1 = utils.o3d2npy(points1_o3d)
+            points2_o3d = utils.npy2o3d(points2)
+            points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
+            points2 = utils.o3d2npy(points2_o3d)
         # step1: voxel downsample
         downsampled_coords1, voxelized_coords1, idx_dse2vox1 = utils.voxel_down_sample_gpt(points1, args.voxel_size)
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = utils.voxel_down_sample_gpt(points2, args.voxel_size)
@@ -78,7 +85,7 @@ if __name__ == "__main__":
         # step4: coarse ransac registration
         # use fpfh feature descriptor to compute matches
         matches = ransac.init_matches(keyfeats1.T, keyfeats2.T)
-        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.voxel_size * 2.0, T_gdth)
+        correct = utils.ground_truth_matches(matches, keypts1, keypts2, args.voxel_size * 1.5, T_gdth)
         num_valid_matches = correct.astype(np.int32).sum()
         num_total_matches = correct.shape[0]
         tqdm.write(utils.log_info(f"gdth/init: {num_valid_matches:.2f}/{num_total_matches:.2f}={num_valid_matches/num_total_matches:.2f}", quiet=True))

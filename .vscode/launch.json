@@ -126,12 +126,12 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "guitar",
+                "--classes", "airplane",
                 "--partition", "0.00",
                 // detecter
                 "--key_radius_factor", "2.00",
-                "--lambda1", "1.75",
-                "--lambda2", "1.75",
+                "--lambda1", "2.00",
+                "--lambda2", "2.00",
                 // extracter
                 "--extracter_type", "FPFHFeatExtracter",
                 "--fpfh_radius_factor", "1.75",
@@ -142,7 +142,7 @@
                 "--positive_thresh", "0.50",
                 // misc
                 "--recompute_norm",
-                "--salt_keypts", "0.05",
+                "--salt_keypts", "0.00",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",

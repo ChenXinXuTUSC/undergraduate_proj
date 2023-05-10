@@ -181,7 +181,7 @@ class RansacRegister:
         totl_matches = np.array([keyptsidx1[matches[:,0]], keyptsidx2[matches[:,1]]]).T
         gdth_matches = None
         if T_gdth is not None:
-            correct = utils.ground_truth_matches(matches, keycoords1, keycoords2, self.voxel_size * 1.25, T_gdth) # 上帝视角
+            correct = utils.ground_truth_matches(matches, keycoords1, keycoords2, self.voxel_size * 1.50, T_gdth) # 上帝视角
             correct_valid_num = correct.astype(np.int32).sum()
             correct_total_num = correct.shape[0]
             utils.log_info(f"gdth/init: {correct_valid_num:d}/{correct_total_num:d}={correct_valid_num/correct_total_num:.3f}")

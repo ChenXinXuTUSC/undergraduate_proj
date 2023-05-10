@@ -7,7 +7,7 @@ workspaceFolder=${SCRIPT_PATH}/..
 python ${SCRIPT_PATH}/dump_fcgf_matches.py \
     --data_type ThreeDMatchFCGF \
     --data_root /home/hm/fuguiduo/datasets/3DMatch-FCGF \
-    --out_root ${workspaceFolder}/data/fcgf_matches \
+    --out_root ${workspaceFolder}/data/matches_3DMatch \
     --overlap_dn 0.3 \
     --overlap_up 0.5 \
     --fcgf_model ResUNetBN2C \

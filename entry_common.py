@@ -54,14 +54,14 @@ if __name__ == "__main__":
     ransac_conf = edict({
         "num_workers": 4,
         "num_samples": 8,
-        "max_corrdist": args.voxel_size * 1.25,
+        "max_corrdist": args.voxel_size * 1.50,
         "num_iter": 7500,
         "num_vald": 750,
         "num_rfne": 25
     })
     checkr_conf = edict({
-        "max_corrdist": args.voxel_size * 1.25,
-        "mutldist_factor": 0.85,
+        "max_corrdist": args.voxel_size * 1.50,
+        "mutldist_factor": 0.90,
         "normdegr_thresh": None
     })
     
@@ -100,6 +100,14 @@ if __name__ == "__main__":
         ) = register.register(points1, points2, T_gdth)
         if fine_registrartion is None:
             utils.log_warn(f"fail to register {sample_name}")
+            utils.dump_registration_result(
+                args.out_root, "output",
+                points1, points2,
+                downsampled_coords1, keyptsidx1,
+                downsampled_coords2, keyptsidx2,
+                T_gdth, np.eye(4),
+                gdth_matches
+            )
             continue
         
         T_pred = fine_registrartion.transformation
