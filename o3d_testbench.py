@@ -1,4 +1,5 @@
 import open3d as o3d
+import numpy as np
 
 import utils
 from easydict import EasyDict as edict
@@ -43,13 +44,19 @@ if __name__ == "__main__":
     dataloader = available_datasets[args.data_type](
         root=args.data_root,
         shuffle=True,
-        augment=True,
-        augdgre=30.0,
-        augdist=4.0,
+        augdict= edict({
+            "augment": True,
+            "augdgre": 5.00,
+            "augdist": 5.0,
+            "augjitr": 0.00,
+            "augnois": 0
+        }),
         args=args
     )
     
     for points1, points2, T_gdth, sample_name in dataloader:
+        utils.log_info(sample_name)
+        
         points1_o3d = utils.npy2o3d(points1)
         points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=30))
         points1 = utils.o3d2npy(points1_o3d)
@@ -59,24 +66,35 @@ if __name__ == "__main__":
         
         downsampled_coords1, voxelized_coords1, idx_dse2vox1 = utils.voxel_down_sample_gpt(points1, args.voxel_size)
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = utils.voxel_down_sample_gpt(points2, args.voxel_size)
-        
+        downsampled_coords1_o3d = utils.npy2o3d(downsampled_coords1)
+        downsampled_coords2_o3d = utils.npy2o3d(downsampled_coords2)
         fpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
-            utils.npy2o3d(downsampled_coords1),
+            downsampled_coords1_o3d,
             o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * args.fpfh_radius_factor, max_nn=args.fpfh_nn)
         )
         fpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
-            utils.npy2o3d(downsampled_coords2),
+            downsampled_coords2_o3d,
             o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * args.fpfh_radius_factor, max_nn=args.fpfh_nn)
         )
         
         result = execute_global_registration(
-            utils.npy2o3d(downsampled_coords1), utils.npy2o3d(downsampled_coords2),
+            downsampled_coords1_o3d, downsampled_coords2_o3d,
             fpfhs1, fpfhs2,
             args.voxel_size
         )
         
         T_pred = result.transformation
-        utils.log_info(f"sample name: {sample_name}")
-        utils.log_info("pred T:", utils.resolve_axis_angle(T_pred, deg=True), T_pred[:3,3])
-        utils.log_info("gdth T:", utils.resolve_axis_angle(T_gdth, deg=True), T_gdth[:3,3])
         
+        raxis_pred, rdegr_pred = utils.resolve_axis_angle(T_pred, deg=True)
+        raxis_gdth, rdegr_gdth = utils.resolve_axis_angle(T_gdth, deg=True)
+        trans_pred, trans_gdth = T_pred[:3, 3], T_gdth[:3, 3]
+        print(utils.get_colorstr(
+                fore=utils.FORE_CYN, back=utils.BACK_ORG,
+                msg="raxis\trdegr\ttrans"
+            )
+        )
+        print(utils.get_colorstr(
+                fore=utils.FORE_PRP, back=utils.BACK_ORG,
+                msg=f"{np.arccos(np.dot(raxis_gdth, raxis_pred)):5.3f}\t{abs(rdegr_gdth - rdegr_pred):5.3f}\t{[float(f'{x:.2f}') for x in trans_gdth - trans_pred]}"
+            )
+        )

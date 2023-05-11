@@ -1,4 +1,4 @@
 in_channels: 66
 out_channels: 16
 mid_channels: [128, 256, 128, 64]
-weight: ""
+weight: "/home/hm/fuguiduo/code/ransac_registration/log/ModelNet40/Mapper/i66o16/2023-05-11_14:14:08/weights/best.pth"

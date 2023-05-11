@@ -1,4 +1,4 @@
 in_channels: 16
 out_channels: 1
 mid_channels: [32, 64, 32]
-weight: "/home/hm/fuguiduo/code/ransac_registration/log/3DMatch/Predicter/i16o1/2023-05-08_09:59:02/weight/best.pth"
+weight: "/home/hm/fuguiduo/code/ransac_registration/log/3DMatch/Predicter/i16o1/2023-05-11_13:05:14/weight/best.pth"

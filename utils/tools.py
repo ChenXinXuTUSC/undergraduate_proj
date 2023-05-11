@@ -490,7 +490,7 @@ def resolve_axis_angle(T: np.ndarray, deg: bool):
     if deg:
         # if in degree format instead of radian
         angle = angle / np.pi * 180.0
-    raxis = np.array([R[2,1]-R[1,2], R[0,2]-R[2,0], R[1,0]-R[0,1]]) / (2.0 * np.sin(angle))
+    raxis = np.array([R[2,1]-R[1,2], R[0,2]-R[2,0], R[1,0]-R[0,1]]) / (2.0 * np.sin(angle) + 1e-8)
     raxis = raxis / np.sqrt((raxis * raxis).sum()) # normalization
     return raxis, angle
 

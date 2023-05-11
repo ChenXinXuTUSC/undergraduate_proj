@@ -46,6 +46,8 @@ class Mapper(nn.Module):
             except Exception as e:
                 utils.log_warn("fail to load weight for mapper:", e)
                 utils.log_warn("run without pretrained weight")
+        else:
+            utils.log_warn("weights not found, load with empty weights")
     
     @classmethod
     def conf_init(cls, conf_file: str):

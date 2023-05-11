@@ -141,12 +141,12 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "person",
+                "--classes", "airplane car guitar person",
                 "--partition", "0.00",
                 // detecter
-                "--key_radius_factor", "2.00",
-                "--lambda1", "2.00",
-                "--lambda2", "2.00",
+                "--key_radius_factor", "2.25",
+                "--lambda1", "2.25",
+                "--lambda2", "2.25",
                 // extracter
                 "--extracter_type", "FPFHFeatExtracter",
                 "--fpfh_radius_factor", "1.75",
@@ -176,14 +176,14 @@
                 "--data_type", "ThreeDMatchFCGF",
                 "--data_root", "/home/hm/fuguiduo/datasets/3DMatch-FCGF",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
-                "--rooms", "7-scenes-pumpkin 7-scenes-office",
+                "--rooms", "rgbd-scenes-v2",
                 "--voxel_size", "0.05",
-                "--overlap_dn", "0.4",
-                "--overlap_up", "0.5",
+                "--overlap_dn", "0.30",
+                "--overlap_up", "0.35",
                 // detecter
                 "--key_radius_factor", "2.25",
                 "--lambda1", "3.00",
-                "--lambda2", "2.85",
+                "--lambda2", "3.00",
                 // extracter
                 "--extracter_type", "FCGFFeatExtracter",
                 "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
@@ -194,7 +194,7 @@
                 "--positive_thresh", "0.65",
                 // misc
                 "--recompute_norm",
-                "--salt_keypts", "0.025",
+                "--salt_keypts", "0.10",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",
@@ -280,13 +280,6 @@
                 "--key_radius_factor", "1.5",
                 "--fpfh_radius_factor", "5.0",
                 "--fpfh_nn", "100",
-                
-                "--extracter_type", "FPFHFeatExtracter",
-                // "--extracter_weight", "/home/hm/fuguiduo/code/DGR.mink/ResUNetBN2C-feat32-3dmatch-v0.05.pth",
-                // "--fcgf_model", "ResUNetBN2C",
-
-                "--mapper_conf", "${workspaceFolder}/models/conf/mapper.yaml",
-                "--predictor_conf", "${workspaceFolder}/models/conf/predictor.yaml",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0",

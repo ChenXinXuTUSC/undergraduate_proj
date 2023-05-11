@@ -48,12 +48,14 @@ def save_state_dict(state, out_dir:str, out_name: str):
 
 if __name__ == "__main__":
     dataset_name = "ModelNet40"
+    # dataset_name = "3DMatch"
     train_loader = torch.utils.data.DataLoader(
         datasets.train_data.MatchingFeats(
             f"./data/matches_{dataset_name}",
             64,
             postive_ratio=0.1,
             filter_strs=["radio", "monitor", "lamp", "vase", "bed"]
+            # filter_strs=["analysis-by-synthesis-apt1", "bundlefusion-office", "sun3d-harvard", "sun3d-mit"]
         ),
         num_workers=2,
         batch_size=8,
@@ -61,18 +63,18 @@ if __name__ == "__main__":
     )
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    classifier = models.inlier_proposal.mapper.Mapper.conf_init(f"models/conf/mapper_{dataset_name}.yaml")
-    classifier.to(device)
-    classifier.train()
-    optimizer = torch.optim.Adam(classifier.parameters(), 1e-2)
+    mapper = models.inlier_proposal.mapper.Mapper.conf_init(f"models/conf/mapper_{dataset_name}.yaml")
+    mapper.to(device)
+    mapper.train()
+    optimizer = torch.optim.Adam(mapper.parameters(), 1e-2)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     lossfn = models.metric.contrastive.ContrastiveLoss()
     
     
     timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-    log_dir = f"./log/{dataset_name}/Mapper/i{classifier.in_channels}o{classifier.out_channels}/{timestamp}"
+    log_dir = f"./log/{dataset_name}/Mapper/i{mapper.in_channels}o{mapper.out_channels}/{timestamp}"
     tfxw = SummaryWriter(log_dir=log_dir)
-    num_epochs = 100
+    num_epochs = 50
     log_freq = 10
     save_freq = 25
     best_avg_loss = None
@@ -82,7 +84,7 @@ if __name__ == "__main__":
             matches = matches.to(device).float()
             labels = labels.to(device)
             matches = matches.transpose(1, 2)
-            output = classifier(matches).transpose(1, 2)
+            output = mapper(matches).transpose(1, 2)
             output = output.reshape(-1, output.size(-1))
             labels = labels.reshape(-1, 1)
             loss = lossfn(output, labels, centeralized=False)
@@ -105,10 +107,10 @@ if __name__ == "__main__":
                         ), global_step=epoch*len(train_loader) + iter
                     )
         if epoch % save_freq == 0:
-            save_state_dict(classifier.state_dict(), out_dir=f"{log_dir}/weights", out_name=f"{epoch:03d}")
+            save_state_dict(mapper.state_dict(), out_dir=f"{log_dir}/weights", out_name=f"{epoch:03d}")
         epoch_avg_loss = loss_totl / len(train_loader)
         if best_avg_loss is None or epoch_avg_loss < best_avg_loss:
             best_avg_loss = epoch_avg_loss
-            save_state_dict(classifier.state_dict(), out_dir=f"{log_dir}/weights", out_name="best")
+            save_state_dict(mapper.state_dict(), out_dir=f"{log_dir}/weights", out_name="best")
         tqdm.write(utils.log_info(f"best_avg_loss: {best_avg_loss:.3f}", quiet=True))
         scheduler.step()
