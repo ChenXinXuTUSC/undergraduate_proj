@@ -10,7 +10,11 @@ __pycache__/
 /out
 /runs
 /results
-# /statistic
+/statistic/*.txt
+/statistic/*.out
+/statistic/*.json
+/statistic/*.yaml
+
 /data
 /*.png
 /*.ply
