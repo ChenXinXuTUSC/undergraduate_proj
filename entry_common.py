@@ -135,3 +135,6 @@ if __name__ == "__main__":
         )
 
         utils.log_info(f"sample: {sample_name}")
+        
+        utils.dump1frag(points1, utils.make_ply_vtx_type(True, True), out_dir="./results/inlier_proposal" ,out_name="frag1.ply")
+        utils.dump1frag(points2, utils.make_ply_vtx_type(True, True), out_dir="./results/inlier_proposal" ,out_name="frag2.ply")

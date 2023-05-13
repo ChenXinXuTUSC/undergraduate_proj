@@ -141,7 +141,7 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "airplane car guitar person",
+                "--classes", "flower_pot",
                 "--partition", "0.00",
                 // detecter
                 "--key_radius_factor", "2.25",
@@ -160,7 +160,7 @@
                 "--salt_keypts", "0.05",
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
