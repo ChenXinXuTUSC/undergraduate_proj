@@ -25,7 +25,6 @@ if __name__ == "__main__":
     args = edict(vars(config.args))
     if not os.path.exists(args.out_root):
         os.makedirs(args.out_root, mode=0o755)
-    
     dumpfile = open(os.path.join(args.out_root, "out.txt"), 'w') # record statistics
 
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
@@ -98,6 +97,7 @@ if __name__ == "__main__":
         num_valid_matches = int(correct.astype(np.int32).sum())
         num_total_matches = int(correct.shape[0])
         tqdm.write(utils.log_info(f"gdth/init: {num_valid_matches:4d}/{num_total_matches:4d}={num_valid_matches/num_total_matches:.2f}", quiet=True))
+        
         dumpfile.write(f"{sample_name} {num_valid_matches:d} {num_total_matches:d} {num_valid_matches/num_total_matches:.2f}\n")
     
     dumpfile.flush()

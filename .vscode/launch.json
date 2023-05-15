@@ -141,12 +141,12 @@
                 "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
                 "--out_root", "${workspaceFolder}/results/inlier_proposal",
                 "--voxel_size", "0.01",
-                "--classes", "flower_pot",
+                "--classes", "monitor sink",
                 "--partition", "0.00",
                 // detecter
                 "--key_radius_factor", "2.25",
-                "--lambda1", "2.25",
-                "--lambda2", "2.25",
+                "--lambda1", "2.50",
+                "--lambda2", "2.50",
                 // extracter
                 "--extracter_type", "FPFHFeatExtracter",
                 "--fpfh_radius_factor", "1.75",
@@ -157,10 +157,10 @@
                 "--positive_thresh", "0.65",
                 // misc
                 "--recompute_norm",
-                "--salt_keypts", "0.05",
+                "--salt_keypts", "0.025",
             ],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "1",
                 "CUDA_LAUNCH_BLOCKING": "1",
             }
         },
@@ -390,6 +390,43 @@
                 // misc
                 "--recompute_norm",
                 "--salt_keypts", "0.00",
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_LAUNCH_BLOCKING": "1",
+            }
+        },
+
+        // log modelnet40
+        {
+            "name": "log modelnet40",
+            "type": "python",
+            "request": "launch",
+            "program": "statistic_count.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--data_type", "ModelNet40Dense",
+                "--data_root", "/home/hm/fuguiduo/datasets/modelnet40/ply",
+                "--out_root", "${workspaceFolder}/results/statistic",
+                "--voxel_size", "0.01",
+                "--classes", "vase",
+                "--partition", "0.00",
+                // detecter
+                "--key_radius_factor", "2.25",
+                "--lambda1", "2.50",
+                "--lambda2", "2.50",
+                // extracter
+                "--extracter_type", "FPFHFeatExtracter",
+                "--fpfh_radius_factor", "1.75",
+                "--fpfh_nn", "100",
+                // classifier
+                "--mapper_conf", "${workspaceFolder}/models/conf/mapper_ModelNet40.yaml",
+                "--predicter_conf", "${workspaceFolder}/models/conf/predicter_ModelNet40.yaml",
+                "--positive_thresh", "0.65",
+                // misc
+                "--recompute_norm",
+                "--salt_keypts", "0.025",
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1",

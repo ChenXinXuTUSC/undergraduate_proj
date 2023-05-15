@@ -1,6 +1,8 @@
+import os
 import numpy as np
 import open3d as o3d
 from easydict import EasyDict as edict
+import time
 
 from datasets import datasets
 import config
@@ -82,6 +84,8 @@ if __name__ == "__main__":
         misc=args
     )
     
+    dumpfile = open(os.path.join(args.out_root, "count.txt"), 'w')
+    
     total = len(dataloader)
     for i, (points1, points2, T_gdth, sample_name) in enumerate(dataloader):
         utils.log_info(f"{sample_name} {i + 1:4d}/{total}")
@@ -92,23 +96,20 @@ if __name__ == "__main__":
             points2_o3d = utils.npy2o3d(points2)
             points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
             points2 = utils.o3d2npy(points2_o3d)
+            
+        
+        t1 = time.time()
         (
             fine_registrartion,
             downsampled_coords1, downsampled_coords2,
             keyptsidx1, keyptsidx2,
             totl_matches, gdth_matches,
-            msicret
+            miscret
         ) = register.register(points1, points2, T_gdth)
+        t2 = time.time()
         if fine_registrartion is None:
             utils.log_warn(f"fail to register {sample_name}")
-            utils.dump_registration_result(
-                args.out_root, "output",
-                points1, points2,
-                downsampled_coords1, keyptsidx1,
-                downsampled_coords2, keyptsidx2,
-                T_gdth, np.eye(4),
-                gdth_matches
-            )
+            dumpfile.write(f"{sample_name} failed\n")
             continue
         
         T_pred = fine_registrartion.transformation
@@ -126,13 +127,18 @@ if __name__ == "__main__":
             )
         )
         
-        utils.dump_registration_result(
-            args.out_root, "output",
-            points1, points2,
-            downsampled_coords1, keyptsidx1,
-            downsampled_coords2, keyptsidx2,
-            T_gdth, T_pred,
-            gdth_matches
-        )
-
-        utils.log_info(f"sample: {sample_name}")
+        # raxis rdegr
+        dumpfile.write(f"{sample_name} {np.arccos(np.dot(raxis_gdth, raxis_pred)):5.3f} {abs(rdegr_gdth - rdegr_pred):5.3f} ")
+        # trans
+        for x in (trans_gdth - trans_pred):
+            dumpfile.write(f"{x:.2f} ")
+        # initial ratio
+        dumpfile.write(f"{len(gdth_matches)/len(totl_matches):.2f} ")
+        # filtered ratio
+        dumpfile.write(f"{miscret.filtered_ratio:.2f} ")
+        # times
+        dumpfile.write(f"{t2 - t1:.2f}")
+        dumpfile.write('\n')
+        dumpfile.flush()
+    
+    dumpfile.close()

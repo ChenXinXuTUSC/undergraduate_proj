@@ -189,6 +189,7 @@ class RansacRegister:
             utils.log_info(f"gdth/init: {correct_valid_num:4d}/{correct_total_num:4d}={correct_valid_num/correct_total_num:.3f}")
             gdth_matches = totl_matches[correct]
         
+        filtered_ratio = None
         if self.use_filter:
             matches, predicted_mask, manifold_coords = self.matches_filter(keyfeats1, keyfeats2, matches)
             plane_coords = np.reshape(manifold_coords, (-1, self.mapper.out_channels))
@@ -196,9 +197,10 @@ class RansacRegister:
             # snapshot(plane_coords, predicted_mask, d=2, out_name="pred")
             num_valid_matches = np.logical_and(correct, predicted_mask).sum()
             num_total_matches = matches.shape[0]
-            utils.log_dbug(f"gdth/pred: {num_valid_matches:4d}/{num_total_matches:4d}={num_valid_matches/num_total_matches:.3f}")
+            filtered_ratio = num_valid_matches / num_total_matches
+            utils.log_dbug(f"gdth/pred: {num_valid_matches:4d}/{num_total_matches:4d}={filtered_ratio:.3f}")
             if num_valid_matches / num_total_matches < 0.1 or num_valid_matches < 3:
-                return None, totl_matches, gdth_matches
+                return None, totl_matches, gdth_matches, filtered_ratio
         
         coarse_registration = utils.ransac_match(
             keycoords1, keycoords2,
@@ -208,7 +210,7 @@ class RansacRegister:
             matches=matches
         )
         
-        return coarse_registration, totl_matches, gdth_matches
+        return coarse_registration, totl_matches, gdth_matches, filtered_ratio
     
     # step5: fine ransac registration
     def fine_registrartion(
@@ -282,22 +284,21 @@ class RansacRegister:
         feats2 = self.extract_features(pcd2[idx_dse2vox2], voxelized_coords2)
         
         # step4: coarse registration
-        coarse_registration, totl_matches, gdth_matches = self.coarse_registration(
+        coarse_registration, totl_matches, gdth_matches, filtered_ratio = self.coarse_registration(
             downsampled_coords1, downsampled_coords2,
             keyptsidx1, keyptsidx2,
             feats1, feats2,
             T_gdth
         )
+        miscret["filtered_ratio"] = filtered_ratio
+        
         if coarse_registration is None:
             return (
                 None,
                 pcd1[idx_dse2vox1], pcd2[idx_dse2vox2],
                 keyptsidx1, keyptsidx2,
                 totl_matches, gdth_matches,
-                edict({
-                    "rndptsidx1": rndptsidx1,
-                    "rndptsidx2": rndptsidx2
-                })
+                edict(miscret)
             )
         # utils.log_dbug(f"coarse corresponding pairs: {len(coarse_registration.correspondence_set)}")
         
