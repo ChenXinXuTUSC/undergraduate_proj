@@ -29,9 +29,9 @@ if __name__ == "__main__":
         augdict= edict({
             "augment": True,
             "augdgre": 90.0,
-            "augdist": 5.0,
+            "augdist": 5.00,
             "augjitr": 0.00,
-            "augnois": 0
+            "augnois": 0.00
         }),
         args=args
     )
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     
     total = len(dataloader)
     for i, (points1, points2, T_gdth, sample_name) in enumerate(dataloader):
-        utils.log_info(f"{sample_name} {i + 1:4d}/{total}")
+        utils.log_info(f"{i + 1:4d}/{total} {sample_name}")
         if args.recompute_norm:
             points1_o3d = utils.npy2o3d(points1)
             points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=50))
@@ -112,19 +112,8 @@ if __name__ == "__main__":
             continue
         
         T_pred = fine_registrartion.transformation
-        raxis_pred, rdegr_pred = utils.resolve_axis_angle(T_pred, deg=True)
-        raxis_gdth, rdegr_gdth = utils.resolve_axis_angle(T_gdth, deg=True)
-        trans_pred, trans_gdth = T_pred[:3,3], T_gdth[:3,3]
-        print(utils.get_colorstr(
-                fore=utils.FORE_CYN, back=utils.BACK_ORG,
-                msg="raxis\trdegr\ttrans"
-            )
-        )
-        print(utils.get_colorstr(
-                fore=utils.FORE_PRP, back=utils.BACK_ORG,
-                msg=f"{np.arccos(np.dot(raxis_gdth, raxis_pred)):5.3f}\t{abs(rdegr_gdth - rdegr_pred):5.3f}\t{[float(f'{x:.2f}') for x in trans_gdth - trans_pred]}"
-            )
-        )
+        
+        diff_raxis, diff_degr, diff_trans = utils.trans_diff(T_pred, T_gdth)
         
         utils.dump_registration_result(
             args.out_root, "output",
@@ -135,4 +124,4 @@ if __name__ == "__main__":
             gdth_matches
         )
 
-        utils.log_info(f"sample: {sample_name}")
+        utils.log_info(f"{i + 1:4d}/{total} {sample_name}")

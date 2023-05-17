@@ -1,5 +1,9 @@
+import os
+
 import open3d as o3d
 import numpy as np
+
+import time
 
 import utils
 from easydict import EasyDict as edict
@@ -20,21 +24,39 @@ from datasets import datasets
 def execute_global_registration(
     source_down, target_down, 
     source_fpfh, target_fpfh,
-    voxel_size
+    distance_threshold,
+    ransac_n=3
     ):
     '''
     http://www.open3d.org/docs/release/tutorial/pipelines/global_registration.html
     '''
-    distance_threshold = voxel_size * 1.5
     result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
         source_down, target_down, source_fpfh, target_fpfh, True,
         distance_threshold,
-        o3d.pipelines.registration.TransformationEstimationPointToPoint(False), 3,
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(False), ransac_n,
         [
-            o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
+            o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.85),
             o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold)
         ],
         o3d.pipelines.registration.RANSACConvergenceCriteria(100000, 0.999))
+    return result
+
+def execute_match_registration(
+    source_down, target_down,
+    matches,
+    distance_threshold,
+    ransac_n=3
+):
+    if type(matches) == np.ndarray:
+        matches = o3d.utility.Vector2iVector(matches)
+    result = o3d.pipelines.registration.registration_ransac_based_on_correspondence(
+        source_down, target_down,
+        matches, distance_threshold,
+        estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint(False), 
+        ransac_n=ransac_n,
+        criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(4000000, 80000)
+    )
+    
     return result
 
 if __name__ == "__main__":
@@ -46,23 +68,27 @@ if __name__ == "__main__":
         shuffle=True,
         augdict= edict({
             "augment": True,
-            "augdgre": 5.00,
-            "augdist": 5.0,
+            "augdgre": 60.00,
+            "augdist": 5.00,
             "augjitr": 0.00,
-            "augnois": 0
+            "augnois": 0.00
         }),
         args=args
     )
     
-    for points1, points2, T_gdth, sample_name in dataloader:
-        utils.log_info(sample_name)
-        
-        points1_o3d = utils.npy2o3d(points1)
-        points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=30))
-        points1 = utils.o3d2npy(points1_o3d)
-        points2_o3d = utils.npy2o3d(points2)
-        points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=30))
-        points2 = utils.o3d2npy(points1_o3d)
+    timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
+    dumpfile = open(os.path.join(args.out_root, f"{args.data_type}_count_{timestamp}.txt"), 'w')
+    
+    total = len(dataloader)
+    for i, (points1, points2, T_gdth, sample_name) in enumerate(dataloader):
+        utils.log_info(f"{i + 1:4d}/{total} {sample_name}")
+        if args.recompute_norm:
+            points1_o3d = utils.npy2o3d(points1)
+            points1_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=100))
+            points1 = utils.o3d2npy(points1_o3d)
+            points2_o3d = utils.npy2o3d(points2)
+            points2_o3d.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * 2.0, max_nn=100))
+            points2 = utils.o3d2npy(points2_o3d)
         
         downsampled_coords1, voxelized_coords1, idx_dse2vox1 = utils.voxel_down_sample_gpt(points1, args.voxel_size)
         downsampled_coords2, voxelized_coords2, idx_dse2vox2 = utils.voxel_down_sample_gpt(points2, args.voxel_size)
@@ -71,30 +97,31 @@ if __name__ == "__main__":
         fpfhs1 = o3d.pipelines.registration.compute_fpfh_feature(
             downsampled_coords1_o3d,
             o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * args.fpfh_radius_factor, max_nn=args.fpfh_nn)
-        )
+        ).data
         fpfhs2 = o3d.pipelines.registration.compute_fpfh_feature(
             downsampled_coords2_o3d,
             o3d.geometry.KDTreeSearchParamHybrid(radius=args.voxel_size * args.fpfh_radius_factor, max_nn=args.fpfh_nn)
+        ).data
+        
+        matches = utils.init_matches(fpfhs1, fpfhs2)
+        result = execute_match_registration(
+            downsampled_coords1_o3d, downsampled_coords2_o3d,
+            matches, args.voxel_size * 1.5,
+            ransac_n=3
         )
         
-        result = execute_global_registration(
-            downsampled_coords1_o3d, downsampled_coords2_o3d,
-            fpfhs1, fpfhs2,
-            args.voxel_size
-        )
+        # result = execute_global_registration(
+        #     downsampled_coords1_o3d, downsampled_coords2_o3d,
+        #     fpfhs1, fpfhs2,
+        #     args.voxel_size * 1.5
+        # )
         
         T_pred = result.transformation
         
-        raxis_pred, rdegr_pred = utils.resolve_axis_angle(T_pred, deg=True)
-        raxis_gdth, rdegr_gdth = utils.resolve_axis_angle(T_gdth, deg=True)
-        trans_pred, trans_gdth = T_pred[:3, 3], T_gdth[:3, 3]
-        print(utils.get_colorstr(
-                fore=utils.FORE_CYN, back=utils.BACK_ORG,
-                msg="raxis\trdegr\ttrans"
-            )
-        )
-        print(utils.get_colorstr(
-                fore=utils.FORE_PRP, back=utils.BACK_ORG,
-                msg=f"{np.arccos(np.dot(raxis_gdth, raxis_pred)):5.3f}\t{abs(rdegr_gdth - rdegr_pred):5.3f}\t{[float(f'{x:.2f}') for x in trans_gdth - trans_pred]}"
-            )
-        )
+        utils.trans_diff(T_pred, T_gdth)
+        
+        # if you are going to save the fuse result of two point sets
+        # do the translation on point2 instead of point1, it's open-
+        # 3d's feature
+        dumpfile.flush()
+    dumpfile.close()

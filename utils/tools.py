@@ -5,6 +5,7 @@ from plyfile import PlyData, PlyElement
 import open3d as o3d
 
 from .colorlog import *
+from . import colorstr
 
 ply_edg_i1i2rgb = np.dtype(
     [
@@ -286,14 +287,15 @@ def unit_sphere_norm(points: np.ndarray, radius: float):
     points[:, :3] = coords
     return points
 
-def add_env_noise(points: np.ndarray, num_noise: int):
+def add_env_noise(points: np.ndarray, noise_ratio: float):
     '''
     Adding environment noise points to original points.
     
     params:
     -
     * points(np.ndarray): 3D coordinates in shape(num, 3).
-    * num_noise(int): Number of noise points to be added.
+    * noise_ratio(float): Ratio of noise number to the org
+        points.
     
     return:
     -
@@ -307,6 +309,7 @@ def add_env_noise(points: np.ndarray, num_noise: int):
     max_coord = np.max(points[:, :3], axis=0)
     bounding_box_range = max_coord - min_coord
     
+    num_noise = int(len(points) * noise_ratio)
     # in case that points have features other than xyz coordinate
     noise_points = np.zeros((num_noise, points.shape[1]))
     noise_points[:, :3] = np.random.random(size=(num_noise, 3))
@@ -668,3 +671,42 @@ def draw_axis_rainbow(coords: np.ndarray, axis=np.ndarray):
     
     colors = np.array([list(rainbow_color_map(x)) for x in remap])
     return colors
+
+def trans_diff(T_pred: np.ndarray, T_gdth: np.ndarray, quiet: bool=False):
+    '''
+    return the difference between predicted T and ground-truth T.
+    
+    params
+    -
+    * T_pred(np.ndarray): 4x4 predicted transformation matrix.
+    * T_gdth(np.ndarray): 4x4 groundtruth transformation matrix.
+    * quiet(bool): Whether to print the diff.
+    
+    return
+    -
+    * diff_raxis(float): Diff of rotation axis in degree.
+    * diff_rdegr(float): Diff of rotation angle in degree.
+    * diff_trans(np.ndarray): Diff of translation in (x,y,z).
+    '''
+    raxis_pred, rdegr_pred = resolve_axis_angle(T_pred, deg=True)
+    raxis_gdth, rdegr_gdth = resolve_axis_angle(T_gdth, deg=True)
+    trans_pred, trans_gdth = T_pred[:3,3], T_gdth[:3,3]
+    
+    # difference in degree not in radian
+    diff_raxis = np.arccos(np.dot(raxis_gdth, raxis_pred)) / np.pi * 180.0
+    diff_rdegr = abs(rdegr_gdth - rdegr_pred)
+    diff_trans = trans_gdth - trans_pred
+    
+    if not quiet:
+        print(colorstr.get_colorstr(
+                fore=colorstr.FORE_CYN, back=colorstr.BACK_ORG,
+                msg="raxis\trdegr\ttrans"
+            )
+        )
+        print(colorstr.get_colorstr(
+                fore=colorstr.FORE_PRP, back=colorstr.BACK_ORG,
+                msg=f"{diff_raxis:5.3f}\t{diff_rdegr:5.3f}\t{[float(f'{x:.2f}') for x in diff_trans]}"
+            )
+        )
+    
+    return diff_raxis, diff_rdegr, diff_trans
