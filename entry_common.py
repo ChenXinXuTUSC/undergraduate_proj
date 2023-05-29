@@ -25,7 +25,7 @@ if __name__ == "__main__":
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args.data_type](
         root=args.data_root,
-        shuffle=True,
+        shuffle=False,
         augdict= edict({
             "augment": True,
             "augdgre": 90.0,

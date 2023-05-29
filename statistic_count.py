@@ -33,7 +33,7 @@ if __name__ == "__main__":
             "augdgre": 90.0,
             "augdist": 5.00,
             "augjitr": 0.00,
-            "augnois": 0.00
+            "augnois": 0.90
         }),
         args=args
     )

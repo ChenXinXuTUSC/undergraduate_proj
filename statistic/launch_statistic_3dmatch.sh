@@ -1,6 +1,5 @@
 #!/bin/bash
 
-CUDA_VISIBLE_DEVICES=0
 SCRIPT_PATH=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
 workspaceFolder=${SCRIPT_PATH}/..
 

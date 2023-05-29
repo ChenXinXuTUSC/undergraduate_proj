@@ -65,7 +65,7 @@ if __name__ == "__main__":
     available_datasets = {attr_name: getattr(datasets, attr_name) for attr_name in dir(datasets) if callable(getattr(datasets, attr_name))}
     dataloader = available_datasets[args.data_type](
         root=args.data_root,
-        shuffle=True,
+        shuffle=False,
         augdict= edict({
             "augment": True,
             "augdgre": 60.00,
@@ -76,8 +76,8 @@ if __name__ == "__main__":
         args=args
     )
     
-    timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-    dumpfile = open(os.path.join(args.out_root, f"{args.data_type}_count_{timestamp}.txt"), 'w')
+    # timestamp = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
+    # dumpfile = open(os.path.join(args.out_root, f"{args.data_type}_count_{timestamp}.txt"), 'w')
     
     total = len(dataloader)
     for i, (points1, points2, T_gdth, sample_name) in enumerate(dataloader):
@@ -104,12 +104,13 @@ if __name__ == "__main__":
         ).data
         
         matches = utils.init_matches(fpfhs1, fpfhs2)
+        t1 = time.time()
         result = execute_match_registration(
             downsampled_coords1_o3d, downsampled_coords2_o3d,
             matches, args.voxel_size * 1.5,
             ransac_n=3
         )
-        
+        t2 = time.time()
         # result = execute_global_registration(
         #     downsampled_coords1_o3d, downsampled_coords2_o3d,
         #     fpfhs1, fpfhs2,
@@ -118,10 +119,29 @@ if __name__ == "__main__":
         
         T_pred = result.transformation
         
-        utils.trans_diff(T_pred, T_gdth)
+        diff_raxis, diff_rdegr, diff_trans = utils.trans_diff(T_pred, T_gdth)
+        
+        # # raxis rdegr
+        # dumpfile.write(f"{sample_name} {diff_raxis:5.3f} {diff_rdegr:5.3f} ")
+        # # trans
+        # for x in (diff_trans):
+        #     dumpfile.write(f"{x:5.3f} ")
+        # # times
+        # dumpfile.write(f"{t2 - t1:5.3f}")
+        # dumpfile.write('\n')
+        # dumpfile.flush()
         
         # if you are going to save the fuse result of two point sets
         # do the translation on point2 instead of point1, it's open-
         # 3d's feature
-        dumpfile.flush()
-    dumpfile.close()
+        points1[:, 3:6] = np.array([255, 255, 0])
+        points2[:, 3:6] = np.array([0, 255, 255])
+        
+        points2[:, :3] = points2[:, :3] - T_pred[:3,  3]
+        points2[:, :3] = points2[:, :3] @ T_pred[:3, :3]
+        utils.fuse2frags(
+            points1, points2,
+            utils.make_ply_vtx_type(True, True),
+            args.out_root, "o3dpredfuse.ply"
+        )
+    # dumpfile.close()

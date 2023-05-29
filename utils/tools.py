@@ -587,8 +587,8 @@ def dump_registration_result(
         )
     
     # contrastive comparison
-    points1[:,3:6] = color1 * 0.75 # darken the backgroud
-    points2[:,3:6] = color2 * 0.75 # darken the backgroud
+    points1[:,3:6] = color1
+    points2[:,3:6] = color2
     fuse2frags(
         apply_transformation(points1, np.eye(4)), points2, 
         make_ply_vtx_type(True, True), out_dir, f"{out_name}_orgl.ply"

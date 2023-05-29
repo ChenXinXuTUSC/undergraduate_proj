@@ -1,0 +1,8 @@
+{
+    "workbench.colorCustomizations": {
+        "editor.selectionHighlightBorder": "#f4f4f456",
+        "editor.wordHighlightBorder": "#f4f4f456",
+        "editor.lineHighlightBorder": "#f4f4f456",
+        "editor.findMatchHighlightBorder": "#f4f4f456"
+    },
+}
